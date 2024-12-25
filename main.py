@@ -96,9 +96,13 @@ def automate_login(username, password, setup_data):
     login_coords = tuple(map(int, setup_data["login_button"].split(',')))
 
     run_adb_command(f"adb shell input tap {username_coords[0]} {username_coords[1]}")
+    time.sleep(1)
     run_adb_command(f"adb shell input text {username}")
+    time.sleep(1)
     run_adb_command(f"adb shell input tap {password_coords[0]} {password_coords[1]}")
+    time.sleep(1)
     run_adb_command(f"adb shell input text {password}")
+    time.sleep(1)
     run_adb_command(f"adb shell input tap {login_coords[0]} {login_coords[1]}")
 
 # Launch SafeUM app
