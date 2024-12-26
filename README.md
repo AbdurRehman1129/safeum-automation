@@ -1,25 +1,35 @@
+---
+
 ### SafeUM Automation Script: A Powerful ADB-Based Automation Tool for Account Management
 
-This repository provides a script to automate the login, phone number extraction, and logout processes in the SafeUM Android application. It uses **ADB (Android Debug Bridge)** to interact with the app, perform UI actions, and handle multiple accounts with ease.
+This repository provides a script to automate the login, phone number extraction, and logout processes in the SafeUM Android application. It uses **ADB (Android Debug Bridge)** to interact with the app, perform UI actions, and handle multiple accounts with ease. Additionally, it includes a handy username formatting script for processing username-password pairs.
 
 ---
 
 #### **Features**
+
+##### **SafeUM Automation**
 - Automates the SafeUM login process for multiple accounts.
 - Extracts phone numbers directly from the app's screen.
 - Configurable setup for UI element coordinates, saved for future reuse.
 - Handles UI transitions, including progress bars and dynamic buttons.
 - Provides a menu-driven interface for various functionalities.
 
+##### **Username Formatting Script**
+- Processes a list of `username:password` pairs.
+- Extracts usernames and formats them into a single line, separated by commas.
+- Works with standard input for easy integration into pipelines or manual input.
+
 ---
 
 #### **Requirements**
+
 1. **ADB (Android Debug Bridge):**
    - Ensure ADB is installed and configured on your system.
    - Device debugging must be enabled, and the device should be connected via USB or Wi-Fi.
 
 2. **Python 3.x**:
-   - Required to run the script.
+   - Required to run the scripts.
 
 3. **Python Packages**:
    - No external libraries are needed (uses built-in Python libraries like `os`, `json`, and `argparse`).
@@ -30,9 +40,10 @@ This repository provides a script to automate the login, phone number extraction
 ---
 
 #### **Installation**
+
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/safeum-automation.git
+   git clone https://github.com/AbdurRehman1129/safeum-automation.git
    cd safeum-automation
    ```
 
@@ -51,14 +62,21 @@ This repository provides a script to automate the login, phone number extraction
    ```
    Ensure your device is listed.
 
-4. Run the script:
-   ```bash
-   python safeum_automation.py
-   ```
+4. Run the desired script:
+   - For SafeUM automation:
+     ```bash
+     python safeum_automation.py
+     ```
+   - For username formatting:
+     ```bash
+     python name.py
+     ```
 
 ---
 
 #### **Usage**
+
+##### **SafeUM Automation**
 1. **Menu Options**:
    - Option 1: Automate the login, phone number extraction, and logout for multiple accounts.
    - Option 2: Display previously extracted accounts from a JSON file.
@@ -66,13 +84,23 @@ This repository provides a script to automate the login, phone number extraction
    - Option 4: Exit the script.
 
 2. **Setup Coordinates**:
-   If running the script for the first time or on a new device, configure the coordinates for various UI elements using the interactive setup mode.
+   Configure the coordinates for various UI elements using the interactive setup mode when running the script for the first time or on a new device.
 
 3. **Command-Line Arguments**:
    Use the `--setup` argument to specify a previously saved setup:
    ```bash
    python safeum_automation.py --setup <setup_name>
    ```
+
+##### **Username Formatting Script**
+1. Run the script:
+   ```bash
+   python name.py
+   ```
+
+2. Paste your `username:password` pairs as prompted and press the appropriate key combination to signal the end of input (Ctrl+D on Linux/Mac or Ctrl+Z on Windows).
+
+3. The script outputs a single line of usernames, separated by commas.
 
 ---
 
@@ -91,6 +119,6 @@ This repository provides a script to automate the login, phone number extraction
 ---
 
 #### **Contributing**
-Feel free to submit issues or pull requests to enhance the script further. Contributions are welcome!
+Feel free to submit issues or pull requests to enhance the scripts further. Contributions are welcome!
 
----
+--- 
