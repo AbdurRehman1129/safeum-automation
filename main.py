@@ -96,13 +96,9 @@ def automate_login(username, password, setup_data):
     login_coords = tuple(map(int, setup_data["login_button"].split(',')))
 
     run_adb_command(f"adb shell input tap {username_coords[0]} {username_coords[1]}")
-    time.sleep(1)
     run_adb_command(f"adb shell input text {username}")
-    time.sleep(1)
     run_adb_command(f"adb shell input tap {password_coords[0]} {password_coords[1]}")
-    time.sleep(1)
     run_adb_command(f"adb shell input text {password}")
-    time.sleep(1)
     run_adb_command(f"adb shell input tap {login_coords[0]} {login_coords[1]}")
 
 # Launch SafeUM app
@@ -260,7 +256,7 @@ def main():
                 json.dump(extracted_data, json_file, ensure_ascii=False, indent=4)
             print(f"Phone number for {username} has been saved to 'extracted_phone_numbers.json'.")
 
-        # Logout
+        time.sleep(2)
         logout(setup_data,username)
         print(f"Logged out from account: {username}\n")
         clear_screen()
@@ -296,7 +292,8 @@ def displaymenu():
     print("2. Display Extracted accounts.")
     print("3. Setup coordinates.")
     print("4. Display Numbers.")
-    print("5. Exit")
+    print("5. Handle Duplicate Numbers.")
+    print("6. Exit")
 
 def display_phone_numbers():
     # Load the JSON data
@@ -314,11 +311,112 @@ def display_phone_numbers():
     # Print the numbers, separated by commas
     print(', '.join(phone_numbers))
 
+def find_duplicates(file_path):
+    """
+    Finds duplicate phone numbers and the associated usernames.
+
+    Args:
+        file_path (str): Path to the JSON file containing phone numbers.
+
+    Returns:
+        dict: A dictionary with duplicate phone numbers as keys and lists of usernames as values.
+    """
+    with open(file_path, "r", encoding="utf-8") as file:
+        data = json.load(file)
+
+    phone_to_users = {}
+    for username, numbers in data.items():
+        for number in numbers:
+            number = number.replace(" ", "")  # Normalize the phone number format
+            if number in phone_to_users:
+                phone_to_users[number].append(username)
+            else:
+                phone_to_users[number] = [username]
+
+    duplicates = {phone: users for phone, users in phone_to_users.items() if len(users) > 1}
+    return duplicates
+
+def handle_duplicates(file_path, setup_data, password):
+    """
+    Automates handling of duplicate phone numbers by re-login and extracting new numbers.
+
+    Args:
+        file_path (str): Path to the JSON file containing phone numbers.
+        setup_data (dict): Setup data for automation (coordinates).
+        password (str): Password for all accounts.
+    """
+    duplicates = find_duplicates(file_path)
+
+    if not duplicates:
+        print("No duplicate phone numbers found.")
+        return
+
+    print("Found duplicate phone numbers:")
+    for phone, users in duplicates.items():
+        print(f"Phone: {phone}, Usernames: {users}")
+
+    with open(file_path, "r", encoding="utf-8") as file:
+        extracted_data = json.load(file)
+    launch_safeum()
+    time.sleep(3)
+    for phone, usernames in duplicates.items():
+        for username in usernames:
+            print(f"\nProcessing duplicate for username: {username}")
+            
+
+            # Automate login
+            for attempt in range(10):
+                print(f"Checking for login page or GO TO AUTH button... Attempt {attempt + 1}")
+                if is_go_to_auth_button():
+                    print("GO TO AUTH button found! Clicking it...")
+                    auth_coords = tuple(map(int, setup_data["go_to_auth_button"].split(',')))
+                    run_adb_command(f"adb shell input tap {auth_coords[0]} {auth_coords[1]}")
+                    time.sleep(0.21)
+                if is_login_page():
+                    print("Login page found! Logging in...")
+                    automate_login(username, password, setup_data)
+                    break
+                time.sleep(2)
+            else:
+                print(f"Failed to login for username: {username}, skipping...")
+                continue
+
+            # Wait for progress bar and extract new numbers
+            wait_for_progress_bar_to_disappear()
+            print("Checking for Settings button...")
+            while True:
+                button = check_for_buttons()
+
+                if button == "invite":
+                    click_button("settings",setup_data)
+                    break
+                elif button == "settings":
+                    click_button("settings",setup_data)
+                    break
+            print("Extracting new phone numbers...")
+            new_numbers = extract_phone_number()
+
+            if new_numbers:
+                print(f"New numbers extracted for {username}: {new_numbers}")
+                extracted_data[username] = new_numbers
+            else:
+                print(f"No new numbers found for {username}.")
+
+            # Save updated data
+            with open(file_path, "w", encoding="utf-8") as file:
+                json.dump(extracted_data, file, ensure_ascii=False, indent=4)
+
+            # Logout
+            logout(setup_data, username)
+            print(f"Logged out from account: {username}\n")
+
+    print("Duplicate handling completed!")
+
+# Add this option to your menu
 if __name__ == "__main__":
-    
-    while(True):
+    while True:
         displaymenu()
-        choice =int(input("\nEnter Your choice: "))
+        choice = int(input("\nEnter your choice: "))
         if choice == 1:
             main()
             input("\nPress any key to go back to main menu...")
@@ -332,6 +430,26 @@ if __name__ == "__main__":
             display_phone_numbers()
             input("\nPress any key to go back to main menu...")
         elif choice == 5:
+            parser = argparse.ArgumentParser(description="Automate SafeUM login process.")
+            parser.add_argument("--setup", type=str, help="Specify the setup name to use.")
+            args = parser.parse_args()
+        
+            # If a setup name is provided, load that setup
+            setup_data = None
+            if args.setup:
+                setup_data = load_setup_by_name(args.setup)
+                if setup_data:
+                    print(f"Loaded setup '{args.setup}' successfully.")
+            
+            if setup_data is None:
+                # If no setup is provided or failed to load, ask the user to create a new one
+                print("No setup provided or failed to load, please create a new one.")
+                setup_coordinates()
+            if setup_data:
+                password = input("Enter the password for accounts: ").strip()
+                handle_duplicates("extracted_phone_numbers.json", setup_data, password)
+            input("\nPress any key to go back to main menu...")
+        elif choice == 6:
             exit("Exiting...")
         else:
             print("Invalid input...")
