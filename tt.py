@@ -357,12 +357,12 @@ def handle_duplicates(file_path, setup_data, password):
 
     with open(file_path, "r", encoding="utf-8") as file:
         extracted_data = json.load(file)
-    launch_safeum()
-    time.sleep(3)
+
     for phone, usernames in duplicates.items():
         for username in usernames:
             print(f"\nProcessing duplicate for username: {username}")
-            
+            launch_safeum()
+            time.sleep(3)
 
             # Automate login
             for attempt in range(10):
@@ -383,16 +383,8 @@ def handle_duplicates(file_path, setup_data, password):
 
             # Wait for progress bar and extract new numbers
             wait_for_progress_bar_to_disappear()
-            print("Checking for Settings button...")
-            while True:
-                button = check_for_buttons()
-
-                if button == "invite":
-                    click_button("settings",setup_data)
-                    break
-                elif button == "settings":
-                    click_button("settings",setup_data)
-                    break
+            
+            print("Extracting new phone numbers...")
             new_numbers = extract_phone_number()
 
             if new_numbers:
