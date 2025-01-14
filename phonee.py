@@ -82,12 +82,9 @@ while True:
         formatted_output = format_numbers_in_groups(cleaned_numbers, group_size)
         print(Fore.GREEN + "Formatted Phone Numbers in Groups:\n" + Style.RESET_ALL)
         print(formatted_output)
-<<<<<<< HEAD
 
         # Display the total count of phone numbers
         print(Fore.BLUE + f"\nTotal Count of Phone Numbers: {len(cleaned_numbers)}" + Style.RESET_ALL)
-=======
->>>>>>> acc0fc48e53585119e03d2110167fc124a0bacb1
     else:
         print(Fore.RED + "No valid phone numbers found in the text." + Style.RESET_ALL)
     

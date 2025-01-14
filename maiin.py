@@ -256,11 +256,7 @@ def main():
                 json.dump(extracted_data, json_file, ensure_ascii=False, indent=4)
             print(f"Phone number for {username} has been saved to 'extracted_phone_numbers.json'.")
 
-<<<<<<< HEAD
         # Logout
-=======
-        time.sleep(2)
->>>>>>> acc0fc48e53585119e03d2110167fc124a0bacb1
         logout(setup_data,username)
         print(f"Logged out from account: {username}\n")
         clear_screen()
@@ -397,10 +393,6 @@ def handle_duplicates(file_path, setup_data, password):
                 elif button == "settings":
                     click_button("settings",setup_data)
                     break
-<<<<<<< HEAD
-=======
-            print("Extracting new phone numbers...")
->>>>>>> acc0fc48e53585119e03d2110167fc124a0bacb1
             new_numbers = extract_phone_number()
 
             if new_numbers:
