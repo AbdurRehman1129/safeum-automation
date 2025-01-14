@@ -309,7 +309,7 @@ def display_phone_numbers():
             phone_numbers.append(formatted_number)
     
     # Print the numbers, separated by commas
-    print(', '.join(phone_numbers))
+    print(','.join(phone_numbers))
 
 def find_duplicates(file_path):
     """
