@@ -295,7 +295,6 @@ def retry_check_for(setup_data, device_id):
             
             if found_login: 
                 break
-            print("Found login")
             found_auth = check_for(device_id, "auth_button")
             if found_auth:
                 click_button('auth', setup_data, device_id)
