@@ -51,81 +51,133 @@ def load_setup_by_name(setup_name):
 def run_adb_command(command):
     return os.system(f"{command} >nul 2>&1")  # Redirect stdout to null, keep stderr
 
-def get_connected_devices():
-    devices_output = os.popen("adb devices").read()
-    devices = []
-    if devices_output:
-        for line in devices_output.split("\n")[1:]:
-            if line.strip():
-                parts = line.split("\t")
-                if len(parts) == 2 and parts[1] == "device":
-                    devices.append(parts[0])
-    return devices
+# Function to check if the login page is visible
+def is_login_page():
+    run_adb_command("adb shell uiautomator dump /sdcard/window_dump.xml")
+    run_adb_command("adb pull /sdcard/window_dump.xml .")
+    with open("window_dump.xml", "r", encoding="utf-8") as file:
+        xml_content = file.read()
+    return "com.safeum.android:id/et_login" in xml_content and "com.safeum.android:id/et_password" in xml_content and "com.safeum.android:id/login_button" in xml_content
 
-def ask_to_select_device():
-    devices = get_connected_devices()
-    if not devices:
-        print("No devices connected.")
-        
-    elif len(devices) == 1:
-        selected_device = devices[0]
-        return selected_device
+# Function to check if the GO TO AUTH button is visible
+def is_go_to_auth_button():
+    run_adb_command("adb shell uiautomator dump /sdcard/window_dump.xml")
+    run_adb_command("adb pull /sdcard/window_dump.xml .")
+    with open("window_dump.xml", "r", encoding="utf-8") as file:
+        xml_content = file.read()
+    return "GO TO AUTH" in xml_content
+
+# Function to check if the progress bar is visible
+def is_progress_bar_visible():
+    run_adb_command("adb shell uiautomator dump /sdcard/window_dump.xml")
+    run_adb_command("adb pull /sdcard/window_dump.xml .")
+    with open("window_dump.xml", "r", encoding="utf-8") as file:
+        xml_content = file.read()
+    return "android:id/progress" in xml_content
+
+# Function to check if "Invite" or "Settings" button is visible
+def check_for_buttons():
+    run_adb_command("adb shell uiautomator dump /sdcard/window_dump.xml")
+    run_adb_command("adb pull /sdcard/window_dump.xml .")
+    with open("window_dump.xml", "r", encoding="utf-8") as file:
+        xml_content = file.read()
+    if "Invite" in xml_content:
+        return "invite"
+    elif "Settings" in xml_content:
+        return "settings"
     else:
-        print("Connected devices:")
-        for i, device in enumerate(devices):
-            print(f"{i + 1}. {device}")
-        choice = input("Select a device (1, 2, ...): ").strip()
-        try:
-            selected_device = devices[int(choice) - 1]
-            return selected_device
-        except (IndexError, ValueError):
-            print("Invalid choice. Exiting.")
+        return None
 
-def open_safeum(device_id):
-    command = f"adb -s {device_id} shell am start -n com.safeum.android/im.sum.viewer.login.LoginActivity"
-    result = run_adb_command(command)  # Use the helper function here
-    if result == 0:
-        print("SafeUM launched successfully.")
+# Function to automate login
+def automate_login(username, password, setup_data):
+    print(f"Logging in with username: {username}")
+    username_coords = tuple(map(int, setup_data["username_field"].split(',')))
+    password_coords = tuple(map(int, setup_data["password_field"].split(',')))
+    login_coords = tuple(map(int, setup_data["login_button"].split(',')))
+
+    run_adb_command(f"adb shell input tap {username_coords[0]} {username_coords[1]}")
+    run_adb_command(f"adb shell input text {username}")
+    run_adb_command(f"adb shell input tap {password_coords[0]} {password_coords[1]}")
+    run_adb_command(f"adb shell input text {password}")
+    run_adb_command(f"adb shell input tap {login_coords[0]} {login_coords[1]}")
+
+# Launch SafeUM app
+def launch_safeum():
+    print("Launching SafeUM app...")
+    run_adb_command("adb shell monkey -p com.safeum.android 1")
+
+# Wait for progress bar to disappear
+def wait_for_progress_bar_to_disappear():
+    print("Waiting for the progress bar to disappear...")
+    while True:
+        if not is_progress_bar_visible():
+            print("Progress bar disappeared!")
+            break
+        time.sleep(1)
+
+# Click on the appropriate button
+def click_button(button,setup_data):
+    settings_coords = tuple(map(int, setup_data["settings_button"].split(',')))
+
+    if button == "settings":
+        print("Clicking the Settings button...")
+        run_adb_command(f"adb shell input tap {settings_coords[0]} {settings_coords[1]}")
+
+# Function to extract phone number from the screen XML
+def extract_phone_number():
+    print("Extracting phone number...")
+    with open("window_dump.xml", "r", encoding="utf-8") as file:
+        xml_content = file.read()
+    phone_number_pattern = r'\b9944[\d\s]{10}\b'
+    phone_numbers = re.findall(phone_number_pattern, xml_content)
+    if phone_numbers:
+        for number in phone_numbers:
+            print("Found phone number:", number)
+        return phone_numbers
     else:
-        print("Failed to launch SafeUM.")
+        return []
 
-def close_safeum(device_id):
+# Function to log out from SafeUM
+def logout(setup_data,username):
+    control_coords = tuple(map(int, setup_data["account_control_button"].split(',')))
+    logout_coords = tuple(map(int, setup_data["logout_button"].split(',')))
+    exit_coords = tuple(map(int, setup_data["keep_in_device_button"].split(',')))
 
-    command = f"adb -s {device_id} shell am force-stop com.safeum.android"
-    run_adb_command(command)  # Use the helper function here
-
-
-def check_for(device_id, element):
-    
-        run_adb_command(f"adb -s {device_id} shell uiautomator dump /sdcard/window_dump.xml")
-        run_adb_command(f"adb -s {device_id} pull /sdcard/window_dump.xml .")
-
+    while True:
+        run_adb_command("adb shell uiautomator dump /sdcard/window_dump.xml")
+        run_adb_command("adb pull /sdcard/window_dump.xml .")
         with open("window_dump.xml", "r", encoding="utf-8") as file:
             xml_content = file.read()
+        if "Account control" in xml_content:
+            print("Found Account control, clicking button...")
+            run_adb_command(f"adb shell input tap {control_coords[0]} {control_coords[1]}")
+            break
+        time.sleep(0.31)
 
-        if element == "login_page" and (
-            "com.safeum.android:id/et_login" in xml_content and
-            "com.safeum.android:id/et_password" in xml_content and
-            "com.safeum.android:id/login_button" in xml_content
-        ):
-            return True  
-            
-        elif element == "auth_button" and "GO TO AUTH" in xml_content:
-            return True
+    while True:
+        run_adb_command("adb shell uiautomator dump /sdcard/window_dump.xml")
+        run_adb_command("adb pull /sdcard/window_dump.xml .")
+        with open("window_dump.xml", "r", encoding="utf-8") as file:
+            xml_content = file.read()
+        if username in xml_content:
+            print("Username found, clicking logout...")
+            run_adb_command(f"adb shell input tap {logout_coords[0]} {logout_coords[1]}")
+            break
+        time.sleep(0.31)
 
-        elif element == "progress_bar" and "android:id/progress" in xml_content:
-            return True
-
-        elif element == "error" and "Security params error. Try Again" in xml_content:
-            return True
-
-        elif element == "invite" and "Invite" in xml_content:
-            return True
-
-        elif element == "settings" and "Settings" in xml_content:
-            return True
-
-def initialize_setup():
+    while True:
+        run_adb_command("adb shell uiautomator dump /sdcard/window_dump.xml")
+        run_adb_command("adb pull /sdcard/window_dump.xml .")
+        with open("window_dump.xml", "r", encoding="utf-8") as file:
+            xml_content = file.read()
+        if "Account exit" in xml_content:
+            print("Found Account exit Page, clicking Keep on device...")
+            run_adb_command(f"adb shell input tap {exit_coords[0]} {exit_coords[1]}")
+            break
+        time.sleep(0.1)
+        
+# Main function to login and logout multiple accounts
+def main():
     parser = argparse.ArgumentParser(description="Automate SafeUM login process.")
     parser.add_argument("--setup", type=str, help="Specify the setup name to use.")
     args = parser.parse_args()
@@ -138,244 +190,79 @@ def initialize_setup():
             print(f"Loaded setup '{args.setup}' successfully.")
     
     if setup_data is None:
-        # If no setup is provided or failed to load, check for existing setups
-        existing_setups = load_setups()
-        if existing_setups:
-            print("No setup provided or failed to load. Available setups:")
-            for setup_name in existing_setups.keys():
-                print(f"- {setup_name}")
-            choice = input("Would you like to select one of these setups? (yes/no): ").strip().lower()
-            if choice == 'yes':
-                selected_setup = input("Enter the name of the setup you want to use: ").strip()
-                setup_data = load_setup_by_name(selected_setup)
-                if setup_data:
-                    print(f"Loaded setup '{selected_setup}' successfully.")
-                else:
-                    print(f"Setup '{selected_setup}' not found. Please create a new one.")
-                    setup_coordinates()
-            else:
-                print("Please create a new setup.")
-                setup_coordinates()
-        else:
-            print("No setups found. Please create a new one.")
-            setup_coordinates()
-    
-    return setup_data
+        # If no setup is provided or failed to load, ask the user to create a new one
+        print("No setup provided or failed to load, please create a new one.")
+        setup_coordinates()
 
-def click_button(button,setup_data,device_id):
-    username_coords = tuple(map(int, setup_data["username_field"].split(',')))
-    password_coords = tuple(map(int, setup_data["password_field"].split(',')))
-    login_coords = tuple(map(int, setup_data["login_button"].split(',')))
-    control_coords = tuple(map(int, setup_data["account_control_button"].split(',')))
-    logout_coords = tuple(map(int, setup_data["logout_button"].split(',')))
-    exit_coords = tuple(map(int, setup_data["keep_in_device_button"].split(',')))
+    usernames = input("Enter usernames separated by commas: ").split(',')
+    usernames = [username.strip() for username in usernames if username.strip()]
+    password = input("Enter password for all accounts: ")
     auth_coords = tuple(map(int, setup_data["go_to_auth_button"].split(',')))
-    settings_coords = tuple(map(int, setup_data["settings_button"].split(',')))
-
-    if button == "username":
-        run_adb_command(f"adb -s {device_id} shell input tap {username_coords[0]} {username_coords[1]}")
-    elif button == "password":
-        run_adb_command(f"adb -s {device_id} shell input tap {password_coords[0]} {password_coords[1]}")
-    elif button == "login":
-        run_adb_command(f"adb -s {device_id} shell input tap {login_coords[0]} {login_coords[1]}")
-    elif button == "auth":
-        print("Clicking GO TO AUTH button...")
-        run_adb_command(f"adb -s {device_id} shell input tap {auth_coords[0]} {auth_coords[1]}")
-    elif button == "settings":
-        print("Clicking the settings button...")
-        run_adb_command(f"adb -s {device_id} shell input tap {settings_coords[0]} {settings_coords[1]}")
-    elif button == "control":
-        print("Clicking the Account control button...")
-        run_adb_command(f"adb -s {device_id} shell input tap {control_coords[0]} {control_coords[1]}")
-    elif button == "logout":
-        print("Clicking the logout button...")
-        run_adb_command(f"adb -s {device_id} shell input tap {logout_coords[0]} {logout_coords[1]}")
-    elif button == "exit":
-        print("Clicking the exit button...")
-        run_adb_command(f"adb -s {device_id} shell input tap {exit_coords[0]} {exit_coords[1]}")
-    
-def automate_login(username, password, setup_data,device_id,index,total):
-    clear_screen()
-    print(f"{index}/{total}. Logging in with username: {username}")
-    click_button('username',setup_data,device_id)
-    run_adb_command(f"adb shell input text {username}")
-    click_button('password',setup_data,device_id)
-    run_adb_command(f"adb shell input text {password}")
-    click_button('login',setup_data,device_id)
-
-# Wait for progress bar to disappear
-def wait_for_progress_bar_to_disappear(device_id):
-    print("Waiting for the progress bar to disappear...")
-    found_progress = False
-    while True:
-        found_progress = check_for(device_id,'progress_bar')
-        if not found_progress:
-            print("Progress bar disappeared!")
-            break
-        
-# Function to extract phone number from the screen XML
-def extract_phone_number():
-    print("Extracting phone number...")
-    while True:
-        run_adb_command("adb shell uiautomator dump /sdcard/window_dump.xml")
-        run_adb_command("adb pull /sdcard/window_dump.xml .")
-        with open("window_dump.xml", "r", encoding="utf-8") as file:
-            xml_content = file.read()
-        phone_number_pattern = r'\b9944[\d\s]{10}\b'
-        phone_numbers = re.findall(phone_number_pattern, xml_content)
-        if phone_numbers:
-            for number in phone_numbers:
-                print("Found phone number:", number)
-            return phone_numbers
-            break
-        else:
-            return []
-
-def load_extracted_data():
-    """Load existing data from extracted_phone_numbers.json if it exists."""
+    # Load existing data from extracted_phone_numbers.json if it exists
     extracted_data = {}
     if os.path.exists("extracted_phone_numbers.json"):
         with open("extracted_phone_numbers.json", "r", encoding="utf-8") as json_file:
             extracted_data = json.load(json_file)
-    return extracted_data
 
-def is_username_present(username, extracted_data):
-    """Check if the username is already present in the extracted data."""
-    return username in extracted_data
-
-def save_phone_number(username, phone_numbers):
-    """Save the phone number along with its username in the JSON file."""
-    extracted_data = load_extracted_data()
-    extracted_data[username] = phone_numbers
-    with open("extracted_phone_numbers.json", "w", encoding="utf-8") as json_file:
-        json.dump(extracted_data, json_file, ensure_ascii=False, indent=4)
-    print(f"Phone number for {username} has been saved to 'extracted_phone_numbers.json'.")
-
-# Function to clear all data of the SafeUM app
-def clear_safeum_data(device_id):
-    command = f"adb -s {device_id} shell pm clear com.safeum.android"
-    run_adb_command(command)
-    
-
-# Function to enable all required permissions for the SafeUM app
-def enable_safeum_permissions(device_id):
-    permissions = [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_CONTACTS",
-        "android.permission.READ_PHONE_STATE"
-    ]
-
-    for permission in permissions:
-        command = f"adb -s {device_id} shell pm grant com.safeum.android {permission}"
-        run_adb_command(command)
-
-
-# Function to disable SafeUM app notifications
-def disable_safeum_notifications(device_id):
-    command = f"adb -s {device_id} shell appops set com.safeum.android POST_NOTIFICATION deny"
-    run_adb_command(command)
-    
-
-def close_and_open(device_id):
-    close_safeum(device_id)
-    clear_safeum_data(device_id)
-    enable_safeum_permissions(device_id)
-    disable_safeum_notifications(device_id)
-    open_safeum(device_id)
- 
-def retry_check_for(setup_data, device_id):
-    found_login = False
-    found_auth = False
-    while True:
-        for attempt in range(10):
-            found_login = check_for(device_id, "login_page")
-            
-            if found_login: 
-                break
-            found_auth = check_for(device_id, "auth_button")
-            if found_auth:
-                click_button('auth', setup_data, device_id)
-                break
-        if found_auth or found_login:
-            break
-        close_and_open(device_id)  # Retry by closing and reopening the device
-
-
-def check_for_error_or_settings(setup_data,device_id):
-    while True:  # Infinite loop until we find either an error or settings
-        found_error = check_for(device_id, 'error')
-        found_settings = check_for(device_id,"settings")
-
-        if found_error:
-            print("Error found. Closing and reopening the app...")
-            close_and_open(device_id)
-            return False  # Indicate that an error was found
-
-        elif found_settings:
-            click_button('settings',setup_data,device_id)
-            return True
-
-def check_for_logout_things(username,device_id,element):
-    while True:
-        run_adb_command(f"adb -s {device_id} shell uiautomator dump /sdcard/window_dump.xml")
-        run_adb_command(f"adb -s {device_id} pull /sdcard/window_dump.xml .")
-
-        with open("window_dump.xml", "r", encoding="utf-8") as file:
-            xml_content = file.read()
-        if element == 'account_control' and "Account control" in xml_content:
-            return True
-        elif element == 'logout_button' and username in xml_content:
-            return True
-        elif element == 'exit' and "Account exit" in xml_content:
-            return True
-
-def logout_safeum(username,setup_data,device_id):
-    if check_for_logout_things(username,device_id,'account_control'):
-        click_button('control',setup_data,device_id)
-    if check_for_logout_things(username,device_id,'logout_button'):
-        click_button('logout',setup_data,device_id)   
-    if check_for_logout_things(username,device_id,'exit'):
-        click_button('exit',setup_data,device_id)
-
-def automate_safeum(username, password, setup_data, selected_device,index,total):
-    
-    extracted_data = load_extracted_data()
-    
-    if is_username_present(username, extracted_data):
-        print(f"{index}/{total}. Skipping {username} as it already has extracted phone numbers.")
-        return  # Skip the login process for this username
-        
-    retry_check_for(setup_data,selected_device)
-    automate_login(username, password, setup_data,selected_device, index,total)
-    wait_for_progress_bar_to_disappear(selected_device)
-    if not check_for_error_or_settings(setup_data,selected_device):
-        # If an error was found, retry the login process
-        print("Retrying login process...")
-        automate_login(username, password, setup_data, selected_device,index,total)
-    phone_numbers = extract_phone_number()
-    if phone_numbers:
-        save_phone_number(username, phone_numbers)
-    logout_safeum(username,setup_data,selected_device)
-
-def main():
-    
-    setup_data = initialize_setup()
-    selected_device = ask_to_select_device()
-    clear_screen()
-    close_safeum(selected_device)
-    clear_safeum_data(selected_device)
-    enable_safeum_permissions(selected_device)
-    disable_safeum_notifications(selected_device)
-    open_safeum(selected_device)
-    usernames = input("Enter usernames separated by commas: ").split(',')
-    usernames = [username.strip() for username in usernames if username.strip()]
-    password = input("Enter password for all accounts: ")
-    total = len(usernames)
+    # Launch SafeUM app
+    launch_safeum()
+    time.sleep(3)  # Wait for the app to load
+    count_usernames(usernames)
     for index,username in enumerate(usernames,start=1):
-        automate_safeum(username, password, setup_data, selected_device,index,total)
+        # Skip the username if it already has a phone number in the extracted data
+        if username in extracted_data:
+            print(f"{index}. Skipping {username} as it already has extracted phone numbers.")
+            continue
+
+        print(f"\n{index}. Processing account: {username}")
+
+        # Login or handle GO TO AUTH
+        for attempt in range(10):
+            print(f"Checking for login page or GO TO AUTH button... Attempt {attempt + 1}")
+            if is_go_to_auth_button():
+                print("GO TO AUTH button found! Clicking it...")
+                run_adb_command(f"adb shell input tap {auth_coords[0]} {auth_coords[1]}")       
+                time.sleep(0.21)  # Wait for the transition
+            if is_login_page():
+                print("Login page found!")
+                automate_login(username, password,setup_data)
+                break
+            else:
+                print("Neither GO TO AUTH nor Login page found.")
+            time.sleep(2)
+        else:
+            print(f"Login page not found for {username}, skipping...")
+            continue
+
+        # Wait for progress bar
+        wait_for_progress_bar_to_disappear()
+        print("Checking for Settings button...")
+        while True:
+            button = check_for_buttons()
+
+            if button == "invite":
+                click_button("settings",setup_data)
+                break
+            elif button == "settings":
+                click_button("settings",setup_data)
+                break
+
+        time.sleep(0.12)
+        phone_numbers = extract_phone_number()
+        if phone_numbers:
+            extracted_data[username] = phone_numbers
+            # Append new data to the JSON file without overwriting
+            with open("extracted_phone_numbers.json", "w", encoding="utf-8") as json_file:
+                json.dump(extracted_data, json_file, ensure_ascii=False, indent=4)
+            print(f"Phone number for {username} has been saved to 'extracted_phone_numbers.json'.")
+
+        # Logout
+        logout(setup_data,username)
+        print(f"Logged out from account: {username}\n")
+        clear_screen()
+def count_usernames(usernames):
+    
+    print(f'Total usernames are: {len(usernames)}')
 
 def display_accounts(file_path):
     # Open and load the JSON data
@@ -424,24 +311,16 @@ def display_phone_numbers():
     # Print the numbers, separated by commas
     print(','.join(phone_numbers))
 
-def handle_duplicated_numbers(username, password, setup_data, selected_device):
-    
-    extracted_data = load_extracted_data()
-    retry_check_for(setup_data,selected_device)
-    automate_login(username, password, setup_data,selected_device)
-    wait_for_progress_bar_to_disappear(selected_device)
-    time.sleep(1)
-    if not check_for_error_or_settings(selected_device):
-        # If an error was found, retry the login process
-        print("Retrying login process...")
-        automate_login(username, password, setup_data, selected_device)
-    new_phone_numbers = extract_phone_number()
-    if new_phone_numbers:
-        save_phone_number(username, new_phone_numbers)
-    logout_safeum(username,setup_data,selected_device)
-
 def find_duplicates(file_path):
+    """
+    Finds duplicate phone numbers and the associated usernames.
 
+    Args:
+        file_path (str): Path to the JSON file containing phone numbers.
+
+    Returns:
+        dict: A dictionary with duplicate phone numbers as keys and lists of usernames as values.
+    """
     with open(file_path, "r", encoding="utf-8") as file:
         data = json.load(file)
 
@@ -457,8 +336,15 @@ def find_duplicates(file_path):
     duplicates = {phone: users for phone, users in phone_to_users.items() if len(users) > 1}
     return duplicates
 
-def handle_duplicates(file_path):
+def handle_duplicates(file_path, setup_data, password):
+    """
+    Automates handling of duplicate phone numbers by re-login and extracting new numbers.
 
+    Args:
+        file_path (str): Path to the JSON file containing phone numbers.
+        setup_data (dict): Setup data for automation (coordinates).
+        password (str): Password for all accounts.
+    """
     duplicates = find_duplicates(file_path)
 
     if not duplicates:
@@ -469,15 +355,59 @@ def handle_duplicates(file_path):
     for phone, users in duplicates.items():
         print(f"Phone: {phone}, Usernames: {users}")
 
-    setup_data = initialize_setup()
-    selected_device = ask_to_select_device()
-    password = input("Enter password for all accounts: ")
-    clear_screen()
-    open_safeum(selected_device)
+    with open(file_path, "r", encoding="utf-8") as file:
+        extracted_data = json.load(file)
+    launch_safeum()
     time.sleep(3)
     for phone, usernames in duplicates.items():
         for username in usernames:
-            handle_duplicated_numbers(username, password, setup_data, selected_device)
+            print(f"\nProcessing duplicate for username: {username}")
+            
+
+            # Automate login
+            for attempt in range(10):
+                print(f"Checking for login page or GO TO AUTH button... Attempt {attempt + 1}")
+                if is_go_to_auth_button():
+                    print("GO TO AUTH button found! Clicking it...")
+                    auth_coords = tuple(map(int, setup_data["go_to_auth_button"].split(',')))
+                    run_adb_command(f"adb shell input tap {auth_coords[0]} {auth_coords[1]}")
+                    time.sleep(0.21)
+                if is_login_page():
+                    print("Login page found! Logging in...")
+                    automate_login(username, password, setup_data)
+                    break
+                time.sleep(2)
+            else:
+                print(f"Failed to login for username: {username}, skipping...")
+                continue
+
+            # Wait for progress bar and extract new numbers
+            wait_for_progress_bar_to_disappear()
+            print("Checking for Settings button...")
+            while True:
+                button = check_for_buttons()
+
+                if button == "invite":
+                    click_button("settings",setup_data)
+                    break
+                elif button == "settings":
+                    click_button("settings",setup_data)
+                    break
+            new_numbers = extract_phone_number()
+
+            if new_numbers:
+                print(f"New numbers extracted for {username}: {new_numbers}")
+                extracted_data[username] = new_numbers
+            else:
+                print(f"No new numbers found for {username}.")
+
+            # Save updated data
+            with open(file_path, "w", encoding="utf-8") as file:
+                json.dump(extracted_data, file, ensure_ascii=False, indent=4)
+
+            # Logout
+            logout(setup_data, username)
+            print(f"Logged out from account: {username}\n")
 
     print("Duplicate handling completed!")
 
@@ -499,7 +429,24 @@ if __name__ == "__main__":
             display_phone_numbers()
             input("\nPress any key to go back to main menu...")
         elif choice == 5:
-            handle_duplicates("extracted_phone_numbers.json")
+            parser = argparse.ArgumentParser(description="Automate SafeUM login process.")
+            parser.add_argument("--setup", type=str, help="Specify the setup name to use.")
+            args = parser.parse_args()
+        
+            # If a setup name is provided, load that setup
+            setup_data = None
+            if args.setup:
+                setup_data = load_setup_by_name(args.setup)
+                if setup_data:
+                    print(f"Loaded setup '{args.setup}' successfully.")
+            
+            if setup_data is None:
+                # If no setup is provided or failed to load, ask the user to create a new one
+                print("No setup provided or failed to load, please create a new one.")
+                setup_coordinates()
+            if setup_data:
+                password = input("Enter the password for accounts: ").strip()
+                handle_duplicates("extracted_phone_numbers.json", setup_data, password)
             input("\nPress any key to go back to main menu...")
         elif choice == 6:
             exit("Exiting...")
