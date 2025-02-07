@@ -1,13 +1,13 @@
 import os
 
-# SafeUM package name
+# Correct package name for SafeUM
 PACKAGE_NAME = "com.safeum.android"
 
-# Function to execute ADB commands
+# Function to run ADB commands quietly
 def adb_command(command):
-    os.system(f"adb {command}")
+    return os.popen(f"adb {command} 2>/dev/null").read().strip()
 
-# Check if device is connected
+# Check ADB connection
 print("[*] Checking ADB connection...")
 adb_command("devices")
 
@@ -15,18 +15,15 @@ adb_command("devices")
 print("[*] Clearing SafeUM app data...")
 adb_command(f"shell pm clear {PACKAGE_NAME}")
 
-# Grant all permissions
-print("[*] Granting all permissions to SafeUM...")
-adb_command(f"shell pm grant {PACKAGE_NAME} android.permission.READ_CONTACTS")
-adb_command(f"shell pm grant {PACKAGE_NAME} android.permission.WRITE_CONTACTS")
-adb_command(f"shell pm grant {PACKAGE_NAME} android.permission.READ_SMS")
-adb_command(f"shell pm grant {PACKAGE_NAME} android.permission.SEND_SMS")
-adb_command(f"shell pm grant {PACKAGE_NAME} android.permission.RECEIVE_SMS")
-adb_command(f"shell pm grant {PACKAGE_NAME} android.permission.CALL_PHONE")
-adb_command(f"shell pm grant {PACKAGE_NAME} android.permission.RECORD_AUDIO")
-adb_command(f"shell pm grant {PACKAGE_NAME} android.permission.CAMERA")
-adb_command(f"shell pm grant {PACKAGE_NAME} android.permission.ACCESS_FINE_LOCATION")
-adb_command(f"shell pm grant {PACKAGE_NAME} android.permission.ACCESS_COARSE_LOCATION")
+# Get only permissions requested by the app
+print("[*] Checking required permissions...")
+requested_permissions = adb_command(f"shell dumpsys package {PACKAGE_NAME} | grep permission").split("\n")
+permissions = [perm.split(":")[0].strip() for perm in requested_permissions if "granted=false" in perm]
 
-# Print completion message
+# Grant only requested permissions
+if permissions:
+    print("[*] Granting necessary permissions...")
+    for perm in permissions:
+        adb_command(f"shell pm grant {PACKAGE_NAME} {perm}")
+
 print("[*] SafeUM data cleared and permissions granted successfully!")
