@@ -425,7 +425,7 @@ def handle_duplicated_numbers(username, password, setup_data, selected_device,in
     automate_login(username, password, setup_data,selected_device,index,total)
     wait_for_progress_bar_to_disappear(selected_device)
     time.sleep(1)
-    if not check_for_error_or_settings(selected_device):
+    if not check_for_error_or_settings(setup_data,selected_device):
         # If an error was found, retry the login process
         print("Retrying login process...")
         handle_duplicated_numbers(username, password, setup_data, selected_device)
