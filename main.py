@@ -223,14 +223,8 @@ def extract_phone_number():
             xml_content = file.read()
         phone_number_pattern = r'\b9944[\d\s]{10}\b'
         phone_numbers = re.findall(phone_number_pattern, xml_content)
-        if phone_numbers:
-            for number in phone_numbers:
-                print("Found phone number:", number)
-            return phone_numbers
-            break
-        else:
-            return []
-
+        return phone_numbers
+        
 def load_extracted_data():
     """Load existing data from extracted_phone_numbers.json if it exists."""
     extracted_data = {}
@@ -424,17 +418,17 @@ def display_phone_numbers():
     # Print the numbers, separated by commas
     print(','.join(phone_numbers))
 
-def handle_duplicated_numbers(username, password, setup_data, selected_device):
+def handle_duplicated_numbers(username, password, setup_data, selected_device,index,total):
     
     extracted_data = load_extracted_data()
     retry_check_for(setup_data,selected_device)
-    automate_login(username, password, setup_data,selected_device)
+    automate_login(username, password, setup_data,selected_device,index,total)
     wait_for_progress_bar_to_disappear(selected_device)
     time.sleep(1)
     if not check_for_error_or_settings(selected_device):
         # If an error was found, retry the login process
         print("Retrying login process...")
-        automate_login(username, password, setup_data, selected_device)
+        handle_duplicated_numbers(username, password, setup_data, selected_device)
     new_phone_numbers = extract_phone_number()
     if new_phone_numbers:
         save_phone_number(username, new_phone_numbers)
@@ -460,7 +454,7 @@ def find_duplicates(file_path):
 def handle_duplicates(file_path):
 
     duplicates = find_duplicates(file_path)
-
+    total = len(duplicates)
     if not duplicates:
         print("No duplicate phone numbers found.")
         return
@@ -476,8 +470,8 @@ def handle_duplicates(file_path):
     open_safeum(selected_device)
     time.sleep(3)
     for phone, usernames in duplicates.items():
-        for username in usernames:
-            handle_duplicated_numbers(username, password, setup_data, selected_device)
+        for index,username in enumerate(usernames,start=1):
+            handle_duplicated_numbers(username, password, setup_data, selected_device,index,total)
 
     print("Duplicate handling completed!")
 
