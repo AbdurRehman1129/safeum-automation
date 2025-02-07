@@ -428,7 +428,7 @@ def handle_duplicated_numbers(username, password, setup_data, selected_device,in
     if not check_for_error_or_settings(setup_data,selected_device):
         # If an error was found, retry the login process
         print("Retrying login process...")
-        handle_duplicated_numbers(username, password, setup_data, selected_device)
+        handle_duplicated_numbers(username, password, setup_data, selected_device,index,total)
     new_phone_numbers = extract_phone_number()
     if new_phone_numbers:
         save_phone_number(username, new_phone_numbers)
