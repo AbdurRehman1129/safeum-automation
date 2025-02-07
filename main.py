@@ -354,7 +354,7 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
     if not check_for_error_or_settings(setup_data,selected_device):
         # If an error was found, retry the login process
         print("Retrying login process...")
-        automate_login(username, password, setup_data, selected_device,index,total)
+        automate_safeum(username, password, setup_data, selected_device,index,total)
     phone_numbers = extract_phone_number()
     if phone_numbers:
         save_phone_number(username, phone_numbers)
