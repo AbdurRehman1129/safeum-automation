@@ -352,12 +352,7 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
     enable_safeum_permissions(selected_device)
     disable_safeum_notifications(selected_device)
     open_safeum(selected_device)
-    extracted_data = load_extracted_data()
     
-    if is_username_present(username, extracted_data):
-        print(f"{index}/{total}. Skipping {username} as it already has extracted phone numbers.")
-        return  # Skip the login process for this username
-        
     retry_check_for(setup_data,selected_device)
     automate_login(username, password, setup_data,selected_device, index,total)
     wait_for_progress_bar_to_disappear(selected_device)
@@ -375,12 +370,16 @@ def main():
     setup_data = initialize_setup()
     selected_device = ask_to_select_device()
     clear_screen()
-    
+    extracted_data = load_extracted_data()
+
     usernames = input("Enter usernames separated by commas: ").split(',')
     usernames = [username.strip() for username in usernames if username.strip()]
     password = input("Enter password for all accounts: ")
     total = len(usernames)
     for index,username in enumerate(usernames,start=1):
+        if is_username_present(username, extracted_data):
+            print(f"{index}/{total}. Skipping {username} as it already has extracted phone numbers.")
+            return  # Skip the login process for this username
         automate_safeum(username, password, setup_data, selected_device,index,total)
 
 def display_accounts(file_path):
