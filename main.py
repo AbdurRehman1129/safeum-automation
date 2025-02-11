@@ -363,7 +363,7 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
     if phone_numbers:
         save_phone_number(username, phone_numbers)
     logout_safeum(username,setup_data,selected_device)
-    
+    return
 
 def main():
     
@@ -379,8 +379,9 @@ def main():
     for index,username in enumerate(usernames,start=1):
         if is_username_present(username, extracted_data):
             print(f"{index}/{total}. Skipping {username} as it already has extracted phone numbers.")
-            return  # Skip the login process for this username
-        automate_safeum(username, password, setup_data, selected_device,index,total)
+            return  
+        else:
+            automate_safeum(username, password, setup_data, selected_device,index,total)
 
 def display_accounts(file_path):
     # Open and load the JSON data
