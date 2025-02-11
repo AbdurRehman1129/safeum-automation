@@ -394,8 +394,9 @@ def display_accounts(file_path):
     for username, numbers in data.items():
         
         for number in numbers:
-            print(f"{index}. {username} : {number}")
+            print(f"Number: {number} , Username: {username}")
             index+=1
+        print(f"Total numbers are {index}")
 
 def clear_screen():
     # For Windows
