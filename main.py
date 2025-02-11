@@ -379,7 +379,7 @@ def main():
     for index,username in enumerate(usernames,start=1):
         if is_username_present(username, extracted_data):
             print(f"{index}/{total}. Skipping {username} as it already has extracted phone numbers.")
-            return  
+            continue  
         else:
             automate_safeum(username, password, setup_data, selected_device,index,total)
 
