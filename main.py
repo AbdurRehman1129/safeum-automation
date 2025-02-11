@@ -394,9 +394,11 @@ def display_accounts(file_path):
     for username, numbers in data.items():
         
         for number in numbers:
+            number = number.replace(" ", "")  # Normalize the phone number format
             print(f"Number: {number} , Username: {username}")
             index+=1
-        print(f"Total numbers are {index}")
+
+    print(f"Total numbers are {index}")
 
 def clear_screen():
     # For Windows
