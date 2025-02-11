@@ -352,7 +352,6 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
     enable_safeum_permissions(selected_device)
     disable_safeum_notifications(selected_device)
     open_safeum(selected_device)
-    
     retry_check_for(setup_data,selected_device)
     automate_login(username, password, setup_data,selected_device, index,total)
     wait_for_progress_bar_to_disappear(selected_device)
@@ -364,7 +363,7 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
     if phone_numbers:
         save_phone_number(username, phone_numbers)
     logout_safeum(username,setup_data,selected_device)
-    return
+    
 
 def main():
     
@@ -449,7 +448,7 @@ def handle_duplicated_numbers(username, password, setup_data, selected_device,in
     if new_phone_numbers:
         save_phone_number(username, new_phone_numbers)
     logout_safeum(username,setup_data,selected_device)
-    return
+    
 def find_duplicates(file_path):
 
     with open(file_path, "r", encoding="utf-8") as file:
