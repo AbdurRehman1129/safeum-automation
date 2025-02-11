@@ -225,6 +225,7 @@ def extract_phone_number(device_id):
         phone_numbers = re.findall(phone_number_pattern, xml_content)
         if phone_numbers:
             print(f"Phone number found: {phone_numbers[0]}")
+            run_adb_command(f"adb -s {device_id} shell cmd vibrator vibrate 200")
             return phone_numbers
         
 def load_extracted_data():
@@ -297,7 +298,7 @@ def retry_check_for(setup_data, device_id):
                 break
         if found_auth or found_login:
             break
-        close_and_open(device_id)  # Retry by closing and reopening the device
+        open_safeum(device_id)  # Retry by  reopening the device
 
 
 def check_for_error_or_settings(setup_data,device_id):
