@@ -1,29 +1,48 @@
 import os
+def run_adb_command(command):
+    return os.system(f"{command} >nul 2>&1")  # Redirect stdout to null, keep stderr
 
-# Correct package name for SafeUM
-PACKAGE_NAME = "com.safeum.android"
+def open_safeum():
+    command = f"adb shell am start -n com.safeum.android/im.sum.viewer.login.LoginActivity"
+    result = run_adb_command(command)  # Use the helper function here
+    if result == 0:
+        print("SafeUM launched successfully.")
+    else:
+        print("Failed to launch SafeUM.")
 
-# Function to run ADB commands quietly
-def adb_command(command):
-    return os.popen(f"adb {command} 2>/dev/null").read().strip()
+def clear_safeum_data():
+    command = f"adb shell pm clear com.safeum.android"
+    run_adb_command(command)
+    
 
-# Check ADB connection
-print("[*] Checking ADB connection...")
-adb_command("devices")
+def close_safeum():
 
-# Clear SafeUM app data
-print("[*] Clearing SafeUM app data...")
-adb_command(f"shell pm clear {PACKAGE_NAME}")
+    command = f"adb shell am force-stop com.safeum.android"
+    run_adb_command(command)  # Use the helper function here
+# Function to enable all required permissions for the SafeUM app
+def enable_safeum_permissions():
+    permissions = [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_PHONE_STATE"
+    ]
 
-# Get only permissions requested by the app
-print("[*] Checking required permissions...")
-requested_permissions = adb_command(f"shell dumpsys package {PACKAGE_NAME} | grep permission").split("\n")
-permissions = [perm.split(":")[0].strip() for perm in requested_permissions if "granted=false" in perm]
+    for permission in permissions:
+        command = f"adb shell pm grant com.safeum.android {permission}"
+        run_adb_command(command)
 
-# Grant only requested permissions
-if permissions:
-    print("[*] Granting necessary permissions...")
-    for perm in permissions:
-        adb_command(f"shell pm grant {PACKAGE_NAME} {perm}")
-
-print("[*] SafeUM data cleared and permissions granted successfully!")
+# Function to disable SafeUM app notifications
+def disable_safeum_notifications():
+    command = f"adb shell appops set com.safeum.android POST_NOTIFICATION deny"
+    run_adb_command(command)
+    
+def close_and_open():
+    close_safeum()
+    clear_safeum_data()
+    enable_safeum_permissions()
+    disable_safeum_notifications()
+    open_safeum()
+ 
