@@ -19,7 +19,8 @@ def close_safeum():
 
     command = f"adb shell am force-stop com.safeum.android"
     run_adb_command(command)  # Use the helper function here
-# Function to enable all required permissions for the SafeUM app
+
+
 def enable_safeum_permissions():
     permissions = [
         "android.permission.CAMERA",
@@ -46,3 +47,4 @@ def close_and_open():
     disable_safeum_notifications()
     open_safeum()
  
+close_and_open()
