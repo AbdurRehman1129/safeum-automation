@@ -198,9 +198,9 @@ def automate_login(username, password, setup_data,device_id,index,total):
     clear_screen()
     print(f"{index}/{total}. Logging in with username: {username}")
     click_button('username',setup_data,device_id)
-    run_adb_command(f"adb shell input text {username}")
+    run_adb_command(f"adb -s {device_id} shell input text {username}")
     click_button('password',setup_data,device_id)
-    run_adb_command(f"adb shell input text {password}")
+    run_adb_command(f"adb -s {device_id} shell input text {password}")
     click_button('login',setup_data,device_id)
 
 # Wait for progress bar to disappear
@@ -214,16 +214,18 @@ def wait_for_progress_bar_to_disappear(device_id):
             break
         
 # Function to extract phone number from the screen XML
-def extract_phone_number():
+def extract_phone_number(device_id):
     print("Extracting phone number...")
     while True:
-        run_adb_command("adb shell uiautomator dump /sdcard/window_dump.xml")
-        run_adb_command("adb pull /sdcard/window_dump.xml .")
+        run_adb_command(f"adb -s {device_id} shell uiautomator dump /sdcard/window_dump.xml")
+        run_adb_command(f"adb -s {device_id} pull /sdcard/window_dump.xml .")
         with open("window_dump.xml", "r", encoding="utf-8") as file:
             xml_content = file.read()
         phone_number_pattern = r'\b9944[\d\s]{10}\b'
         phone_numbers = re.findall(phone_number_pattern, xml_content)
-        return phone_numbers
+        if phone_numbers:
+            print(f"Phone number found: {phone_numbers[0]}")
+            return phone_numbers
         
 def load_extracted_data():
     """Load existing data from extracted_phone_numbers.json if it exists."""
@@ -302,15 +304,18 @@ def check_for_error_or_settings(setup_data,device_id):
     while True:  # Infinite loop until we find either an error or settings
         found_error = check_for(device_id, 'error')
         found_settings = check_for(device_id,"settings")
-
+        found_login = check_for(device_id, 'login_page')
         if found_error:
             print("Error found. Closing and reopening the app...")
-            close_and_open(device_id)
-            return False  # Indicate that an error was found
+            return False 
 
         elif found_settings:
             click_button('settings',setup_data,device_id)
             return True
+        
+        elif found_login:
+            print("Login page found again. Restarting the process for this username...")
+            return False
 
 def check_for_logout_things(username,device_id,element):
     while True:
@@ -327,15 +332,26 @@ def check_for_logout_things(username,device_id,element):
             return True
 
 def logout_safeum(username,setup_data,device_id):
-    if check_for_logout_things(username,device_id,'account_control'):
-        click_button('control',setup_data,device_id)
-    if check_for_logout_things(username,device_id,'logout_button'):
-        click_button('logout',setup_data,device_id)   
-    if check_for_logout_things(username,device_id,'exit'):
-        click_button('exit',setup_data,device_id)
+    while True:
+        if check_for_logout_things(username,device_id,'account_control'):
+            click_button('control',setup_data,device_id)
+            break
+    while True:
+        if check_for_logout_things(username,device_id,'logout_button'):
+            click_button('logout',setup_data,device_id)
+            break
+    while True:   
+        if check_for_logout_things(username,device_id,'exit'):
+            click_button('exit',setup_data,device_id)
+            break
+        return
 
 def automate_safeum(username, password, setup_data, selected_device,index,total):
-    
+    close_safeum(selected_device)
+    clear_safeum_data(selected_device)
+    enable_safeum_permissions(selected_device)
+    disable_safeum_notifications(selected_device)
+    open_safeum(selected_device)
     extracted_data = load_extracted_data()
     
     if is_username_present(username, extracted_data):
@@ -349,7 +365,7 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
         # If an error was found, retry the login process
         print("Retrying login process...")
         automate_safeum(username, password, setup_data, selected_device,index,total)
-    phone_numbers = extract_phone_number()
+    phone_numbers = extract_phone_number(selected_device)
     if phone_numbers:
         save_phone_number(username, phone_numbers)
     logout_safeum(username,setup_data,selected_device)
@@ -359,11 +375,7 @@ def main():
     setup_data = initialize_setup()
     selected_device = ask_to_select_device()
     clear_screen()
-    close_safeum(selected_device)
-    clear_safeum_data(selected_device)
-    enable_safeum_permissions(selected_device)
-    disable_safeum_notifications(selected_device)
-    open_safeum(selected_device)
+    
     usernames = input("Enter usernames separated by commas: ").split(',')
     usernames = [username.strip() for username in usernames if username.strip()]
     password = input("Enter password for all accounts: ")
@@ -419,7 +431,11 @@ def display_phone_numbers():
     print(','.join(phone_numbers))
 
 def handle_duplicated_numbers(username, password, setup_data, selected_device,index,total):
-    
+    close_safeum(selected_device)
+    clear_safeum_data(selected_device)
+    enable_safeum_permissions(selected_device)
+    disable_safeum_notifications(selected_device)
+    open_safeum(selected_device)
     extracted_data = load_extracted_data()
     retry_check_for(setup_data,selected_device)
     automate_login(username, password, setup_data,selected_device,index,total)
@@ -429,7 +445,7 @@ def handle_duplicated_numbers(username, password, setup_data, selected_device,in
         # If an error was found, retry the login process
         print("Retrying login process...")
         handle_duplicated_numbers(username, password, setup_data, selected_device,index,total)
-    new_phone_numbers = extract_phone_number()
+    new_phone_numbers = extract_phone_number(selected_device)
     if new_phone_numbers:
         save_phone_number(username, new_phone_numbers)
     logout_safeum(username,setup_data,selected_device)
