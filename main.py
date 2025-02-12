@@ -124,6 +124,9 @@ def check_for(device_id, element):
 
         elif element == "settings" and "Settings" in xml_content:
             return True
+        
+        elif element == "stopped" and "SafeUM has stopped." in xml_content or "SafeUM keeps stopping." in xml_content:
+            return True
 
 def initialize_setup():
     parser = argparse.ArgumentParser(description="Automate SafeUM login process.")
@@ -204,13 +207,19 @@ def automate_login(username, password, setup_data,device_id,index,total):
     click_button('login',setup_data,device_id)
 
 # Wait for progress bar to disappear
-def wait_for_progress_bar_to_disappear(device_id):
+def wait_for_progress_bar_to_disappear(device_id,setup_data):
     print("Waiting for the progress bar to disappear...")
-    found_progress = False
+    start_time = time.time()
     while True:
-        found_progress = check_for(device_id,'progress_bar')
+        found_progress = check_for(device_id, 'progress_bar')
         if not found_progress:
-            print("Progress bar disappeared!")
+            print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
+            print("\rProgress bar disappeared!")
+            break
+        elif time.time() - start_time > 600:  # 10 minutes = 600 seconds
+            print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
+            print("\rTimeout 10 minutes. Starting process again...")
+            click_button('logout',setup_data,device_id)
             break
         
 # Function to extract phone number from the screen XML
@@ -253,7 +262,6 @@ def clear_safeum_data(device_id):
     command = f"adb -s {device_id} shell pm clear com.safeum.android"
     run_adb_command(command)
     
-
 # Function to enable all required permissions for the SafeUM app
 def enable_safeum_permissions(device_id):
     permissions = [
@@ -269,13 +277,11 @@ def enable_safeum_permissions(device_id):
         command = f"adb -s {device_id} shell pm grant com.safeum.android {permission}"
         run_adb_command(command)
 
-
 # Function to disable SafeUM app notifications
 def disable_safeum_notifications(device_id):
     command = f"adb -s {device_id} shell appops set com.safeum.android POST_NOTIFICATION deny"
     run_adb_command(command)
     
-
 def close_and_open(device_id):
     close_safeum(device_id)
     clear_safeum_data(device_id)
@@ -300,20 +306,19 @@ def retry_check_for(setup_data, device_id):
             break
         open_safeum(device_id)  # Retry by  reopening the device
 
-
 def check_for_error_or_settings(setup_data,device_id):
     while True:  # Infinite loop until we find either an error or settings
         found_error = check_for(device_id, 'error')
         found_settings = check_for(device_id,"settings")
         found_login = check_for(device_id, 'login_page')
-        if found_error:
-            print("Error found. Closing and reopening the app...")
-            return False 
-
-        elif found_settings:
+        if found_settings:
             click_button('settings',setup_data,device_id)
             return True
         
+        elif found_error:
+            print("Error found. Closing and reopening the app...")
+            return False 
+
         elif found_login:
             print("Login page found again. Restarting the process for this username...")
             return False
@@ -345,25 +350,28 @@ def logout_safeum(username,setup_data,device_id):
         if check_for_logout_things(username,device_id,'exit'):
             click_button('exit',setup_data,device_id)
             break
-        return
+    while not check_for(device_id, 'login_page'):
+        time.sleep(1)
+    return
+        
 
 def automate_safeum(username, password, setup_data, selected_device,index,total):
-    close_safeum(selected_device)
-    clear_safeum_data(selected_device)
-    enable_safeum_permissions(selected_device)
-    disable_safeum_notifications(selected_device)
-    open_safeum(selected_device)
+    close_and_open(selected_device)
+    if check_for(selected_device,'stopped'):
+        click_button('exit',setup_data,selected_device)
     retry_check_for(setup_data,selected_device)
     automate_login(username, password, setup_data,selected_device, index,total)
-    wait_for_progress_bar_to_disappear(selected_device)
+    wait_for_progress_bar_to_disappear(selected_device,setup_data)
     if not check_for_error_or_settings(setup_data,selected_device):
         # If an error was found, retry the login process
         print("Retrying login process...")
         automate_safeum(username, password, setup_data, selected_device,index,total)
+        return
     phone_numbers = extract_phone_number(selected_device)
     if phone_numbers:
         save_phone_number(username, phone_numbers)
     logout_safeum(username,setup_data,selected_device)
+    clear_screen()
     return
 
 def main():
@@ -435,24 +443,22 @@ def display_phone_numbers():
     print(','.join(phone_numbers))
 
 def handle_duplicated_numbers(username, password, setup_data, selected_device,index,total):
-    close_safeum(selected_device)
-    clear_safeum_data(selected_device)
-    enable_safeum_permissions(selected_device)
-    disable_safeum_notifications(selected_device)
-    open_safeum(selected_device)
-    extracted_data = load_extracted_data()
+    close_and_open(selected_device)
     retry_check_for(setup_data,selected_device)
     automate_login(username, password, setup_data,selected_device,index,total)
-    wait_for_progress_bar_to_disappear(selected_device)
+    wait_for_progress_bar_to_disappear(selected_device,setup_data)
     time.sleep(1)
     if not check_for_error_or_settings(setup_data,selected_device):
         # If an error was found, retry the login process
         print("Retrying login process...")
         handle_duplicated_numbers(username, password, setup_data, selected_device,index,total)
+        return
     new_phone_numbers = extract_phone_number(selected_device)
     if new_phone_numbers:
         save_phone_number(username, new_phone_numbers)
     logout_safeum(username,setup_data,selected_device)
+    clear_screen()
+    return
     
 def find_duplicates(file_path):
 
