@@ -94,7 +94,6 @@ def close_safeum(device_id):
     command = f"adb -s {device_id} shell am force-stop com.safeum.android"
     run_adb_command(command)  # Use the helper function here
 
-
 def check_for(device_id, element):
     
         run_adb_command(f"adb -s {device_id} shell uiautomator dump /sdcard/window_dump.xml")
@@ -216,7 +215,7 @@ def wait_for_progress_bar_to_disappear(device_id,setup_data):
             print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
             print("\rProgress bar disappeared!")
             break
-        elif time.time() - start_time > 600:  # 10 minutes = 600 seconds
+        elif time.time() - start_time > 300:  # 5 minutes = 300 seconds
             print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
             print("\rTimeout 10 minutes. Starting process again...")
             click_button('logout',setup_data,device_id)
@@ -234,10 +233,10 @@ def extract_phone_number(device_id):
         phone_numbers = re.findall(phone_number_pattern, xml_content)
         
         if phone_numbers:
-            phone_numbers = phone_numbers.replace(" ", "")  # Normalize the phone number format
+            phone_numbers = [number.replace(" ", "") for number in phone_numbers]  # Normalize the phone number format
             print(f"Phone number found: {phone_numbers[0]}")
             run_adb_command(f"adb -s {device_id} shell cmd vibrator vibrate 200")
-            return phone_numbers
+            return phone_numbers[0]
         
 def load_extracted_data():
     """Load existing data from extracted_phone_numbers.json if it exists."""
@@ -356,7 +355,6 @@ def logout_safeum(username,setup_data,device_id):
         time.sleep(1)
     return
         
-
 def automate_safeum(username, password, setup_data, selected_device,index,total):
     close_and_open(selected_device)
     if check_for(selected_device,'stopped'):
