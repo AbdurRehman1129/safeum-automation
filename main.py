@@ -232,7 +232,9 @@ def extract_phone_number(device_id):
             xml_content = file.read()
         phone_number_pattern = r'\b9944[\d\s]{10}\b'
         phone_numbers = re.findall(phone_number_pattern, xml_content)
+        
         if phone_numbers:
+            phone_numbers = phone_numbers.replace(" ", "")  # Normalize the phone number format
             print(f"Phone number found: {phone_numbers[0]}")
             run_adb_command(f"adb -s {device_id} shell cmd vibrator vibrate 200")
             return phone_numbers
