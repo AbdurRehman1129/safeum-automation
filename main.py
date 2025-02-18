@@ -215,7 +215,7 @@ def wait_for_progress_bar_to_disappear(device_id,setup_data):
             print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
             print("\rProgress bar disappeared!")
             break
-        elif time.time() - start_time > 300:  # 5 minutes = 300 seconds
+        elif time.time() - start_time > 600:  # 10 minutes = 600 seconds
             print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
             print("\rTimeout 10 minutes. Starting process again...")
             click_button('logout',setup_data,device_id)
@@ -234,9 +234,9 @@ def extract_phone_number(device_id):
         
         if phone_numbers:
             phone_numbers = [number.replace(" ", "") for number in phone_numbers]  # Normalize the phone number format
-            print(f"Phone number found: {phone_numbers[0]}")
+            print(f"Phone number found: {phone_numbers}")
             run_adb_command(f"adb -s {device_id} shell cmd vibrator vibrate 200")
-            return phone_numbers[0]
+            return phone_numbers
         
 def load_extracted_data():
     """Load existing data from extracted_phone_numbers.json if it exists."""
@@ -354,11 +354,11 @@ def logout_safeum(username,setup_data,device_id):
     while not check_for(device_id, 'login_page'):
         time.sleep(1)
     return
-        
+
 def automate_safeum(username, password, setup_data, selected_device,index,total):
     close_and_open(selected_device)
     if check_for(selected_device,'stopped'):
-        click_button('exit',setup_data,selected_device)
+        click_button('logout',setup_data,selected_device)
     retry_check_for(setup_data,selected_device)
     automate_login(username, password, setup_data,selected_device, index,total)
     wait_for_progress_bar_to_disappear(selected_device,setup_data)
