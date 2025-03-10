@@ -229,13 +229,14 @@ def extract_phone_number(device_id):
         run_adb_command(f"adb -s {device_id} pull /sdcard/window_dump.xml .")
         with open("window_dump.xml", "r", encoding="utf-8") as file:
             xml_content = file.read()
-        phone_number_pattern = r'\b9944[\d\s]{10}\b'
-        phone_numbers = re.findall(phone_number_pattern, xml_content)
+        phone_number_pattern_994 = r'\b9944[\d\s]{10}\b'
+        phone_number_pattern_371 = r'\b3712[\d\s]{9}\b' 
+        phone_numbers = re.findall(phone_number_pattern_994, xml_content)
+        phone_numbers = re.findall(phone_number_pattern_371, xml_content)
         
         if phone_numbers:
             phone_numbers = [number.replace(" ", "") for number in phone_numbers]  # Normalize the phone number format
             print(f"Phone number found: {phone_numbers}")
-            run_adb_command(f"adb -s {device_id} shell cmd vibrator vibrate 200")
             return phone_numbers
         
 def load_extracted_data():
