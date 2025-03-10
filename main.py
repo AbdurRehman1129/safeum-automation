@@ -231,8 +231,10 @@ def extract_phone_number(device_id):
             xml_content = file.read()
         phone_number_pattern_994 = r'\b9944[\d\s]{10}\b'
         phone_number_pattern_371 = r'\b3712[\d\s]{9}\b' 
-        phone_numbers = re.findall(phone_number_pattern_994, xml_content)
-        phone_numbers = re.findall(phone_number_pattern_371, xml_content)
+        phone_numbers_994 = re.findall(phone_number_pattern_994, xml_content)
+        phone_numbers_371 = re.findall(phone_number_pattern_371, xml_content)
+
+        phone_numbers = phone_numbers_994 + phone_numbers_371
         
         if phone_numbers:
             phone_numbers = [number.replace(" ", "") for number in phone_numbers]  # Normalize the phone number format
