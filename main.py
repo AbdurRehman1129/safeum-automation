@@ -7,7 +7,7 @@ import sys
 
 def update_script():
     os.system("git pull")
-    input("\nPress any key to apply changings now...")
+    input("\nPress any key to apply changings now....")
     os.execv(sys.executable, ['python'] + sys.argv)  # Restart script
 
 
