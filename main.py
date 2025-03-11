@@ -333,11 +333,17 @@ def is_username_present(username, extracted_data):
     return username in extracted_data
 
 def save_phone_number(username, phone_numbers):
-    """Save the phone number along with its username in the JSON file."""
     extracted_data = load_extracted_data()
-    extracted_data[username] = phone_numbers
+    
+    for number in phone_numbers:
+        if number.startswith("9944"):
+            extracted_data = {username: phone_numbers, **extracted_data}
+        elif number.startswith("3712"):
+            extracted_data[username] = phone_numbers
+    
     with open("extracted_phone_numbers.json", "w", encoding="utf-8") as json_file:
         json.dump(extracted_data, json_file, ensure_ascii=False, indent=4)
+        
     print(f"Phone number for {username} has been saved to 'extracted_phone_numbers.json'.")
 
 # Function to clear all data of the SafeUM app
@@ -465,6 +471,7 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
     phone_numbers = extract_phone_number(selected_device)
     if phone_numbers:
         save_phone_number(username, phone_numbers)
+        
     logout_safeum(username,setup_data,selected_device)
     clear_screen()
     return
