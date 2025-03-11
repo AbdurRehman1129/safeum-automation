@@ -129,7 +129,7 @@ def check_for(device_id, element):
         elif element == "settings" and "Settings" in xml_content:
             return True
         
-        elif element == "safeum" and ("safeum" in xml_content or "SafeUM" in xml_content):
+        elif element == "safeum" and ("ENTER YOUR DETAILS" in xml_content):
             return True
         
 
