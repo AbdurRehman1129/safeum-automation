@@ -181,32 +181,38 @@ def check_for(device_id, element):
         
         elif element == "safeum" and ("ENTER YOUR DETAILS" in xml_content):
             return True
-    
+
+def load_usernames_from_file(file_path):
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.read().strip()  # Read entire file and remove trailing spaces
+
+        # Check if the file contains comma-separated usernames
+        if ',' in content:
+            usernames = [username.strip() for username in content.split(',') if username.strip()]
+        else:
+            usernames = [line.strip() for line in content.splitlines() if line.strip()]
+        print(f"Usernames loaded from File {file_path} : {len(usernames)} ")
+        return usernames
+    except FileNotFoundError:
+        print(f"Error: File '{file_path}' not found.")
+        exit(1)
+
+
 def initialize_setup():
     parser = argparse.ArgumentParser(description="Automate SafeUM login process.")
     parser.add_argument("--setup", type=str, help="Specify the setup name to use.")
+    parser.add_argument("--file", type=str, help="Specify a file containing usernames.")
+
     args = parser.parse_args()
 
     # If a setup name is provided, load that setup
     setup_data = None
+    file_path = args.file
     if args.setup:
         setup_data = load_setup_by_name(args.setup)
         if setup_data:
             print(f"Loaded setup '{args.setup}' successfully.")
-    # Verify that all required coordinates are available in setup_data
-    required_coordinates = [
-        "username_field", "password_field", "login_button", "go_to_auth_button",
-        "settings_button", "account_control_button", "logout_button", "keep_in_device_button", "close_app"
-    ]
-    
-    missing_coordinates = [coord for coord in required_coordinates if coord not in setup_data or not setup_data[coord]]
-    
-    if missing_coordinates:
-        print("The following coordinates are missing or empty in the setup data:")
-        for coord in missing_coordinates:
-            setup_data[coord] = input(f"Please enter the coordinates for {coord} (x,y): ").strip()
-        save_setup(args.setup, setup_data)
-        print("Missing coordinates have been added and saved.")
     if setup_data is None:
         # If no setup is provided or failed to load, check for existing setups
         existing_setups = load_setups()
@@ -236,8 +242,21 @@ def initialize_setup():
         else:
             print("No setups found. Please create a new one.")
             setup_coordinates()
+    # Verify that all required coordinates are available in setup_data
+    required_coordinates = [
+        "username_field", "password_field", "login_button", "go_to_auth_button",
+        "settings_button", "account_control_button", "logout_button", "keep_in_device_button", "close_app"
+    ]
     
-    return setup_data
+    missing_coordinates = [coord for coord in required_coordinates if coord not in setup_data or not setup_data[coord]]
+    
+    if missing_coordinates:
+        print("The following coordinates are missing or empty in the setup data:")
+        for coord in missing_coordinates:
+            setup_data[coord] = input(f"Please enter the coordinates for {coord} (x,y): ").strip()
+        save_setup(args.setup, setup_data)
+        print("Missing coordinates have been added and saved.")
+    return setup_data ,file_path
 
 def click_button(button,setup_data,device_id):
     username_coords = tuple(map(int, setup_data["username_field"].split(',')))
@@ -478,14 +497,18 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
 
 def main():
     
-    setup_data = initialize_setup()
+    setup_data,file_path = initialize_setup()
     selected_device = ask_to_select_device()
     clear_screen()
     extracted_data = load_extracted_data()
+    if file_path:
+        usernames = load_usernames_from_file(file_path)
+        password = input("Enter password for all accounts: ")
 
-    usernames = input("Enter usernames separated by commas: ").split(',')
-    usernames = [username.strip() for username in usernames if username.strip()]
-    password = input("Enter password for all accounts: ")
+    else:    
+        usernames = input("Enter usernames separated by commas: ").split(',')
+        usernames = [username.strip() for username in usernames if username.strip()]
+        password = input("Enter password for all accounts: ")
     total = len(usernames)
     for index,username in enumerate(usernames,start=1):
         if is_username_present(username, extracted_data):
