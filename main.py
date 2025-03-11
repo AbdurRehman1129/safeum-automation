@@ -356,6 +356,7 @@ def close_and_open(device_id,setup_data):
     enable_safeum_permissions(device_id)
     disable_safeum_notifications(device_id)
     open_safeum(device_id)
+    time.sleep(1)
     if not check_for(device_id,'safeum'):
         if check_for(device_id,'stopped'):
             click_button('close_app',setup_data,device_id)
