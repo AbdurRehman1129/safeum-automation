@@ -7,7 +7,9 @@ import sys
 
 def update_script():
     os.system("git pull")
+    input("\nPress any key to apply changings now...")
     os.execv(sys.executable, ['python'] + sys.argv)  # Restart script
+
 
 # Function to save the setup configuration
 def save_setup(setup_name, setup_data):
@@ -608,7 +610,7 @@ if __name__ == "__main__":
             input("\nPress any key to go back to main menu...")
         elif choice == 7:  
             update_script()
-            input("\nPress any key to go back to main menu...")
+            
         elif choice == 8:
             exit("Exiting...")
         else:
