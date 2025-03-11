@@ -193,7 +193,20 @@ def initialize_setup():
         setup_data = load_setup_by_name(args.setup)
         if setup_data:
             print(f"Loaded setup '{args.setup}' successfully.")
+    # Verify that all required coordinates are available in setup_data
+    required_coordinates = [
+        "username_field", "password_field", "login_button", "go_to_auth_button",
+        "settings_button", "account_control_button", "logout_button", "keep_in_device_button", "close_app"
+    ]
     
+    missing_coordinates = [coord for coord in required_coordinates if coord not in setup_data or not setup_data[coord]]
+    
+    if missing_coordinates:
+        print("The following coordinates are missing or empty in the setup data:")
+        for coord in missing_coordinates:
+            setup_data[coord] = input(f"Please enter the coordinates for {coord} (x,y): ").strip()
+        save_setup(args.setup, setup_data)
+        print("Missing coordinates have been added and saved.")
     if setup_data is None:
         # If no setup is provided or failed to load, check for existing setups
         existing_setups = load_setups()
@@ -610,7 +623,6 @@ if __name__ == "__main__":
             input("\nPress any key to go back to main menu...")
         elif choice == 7:  
             update_script()
-            
         elif choice == 8:
             exit("Exiting...")
         else:
