@@ -6,7 +6,6 @@ import argparse
 
 def update_script():
     os.system("git pull")
-    print("Script updated successfully!")
 # Function to save the setup configuration
 def save_setup(setup_name, setup_data):
     setups = load_setups()
