@@ -4,6 +4,9 @@ import re
 import json
 import argparse
 
+def update_script():
+    os.system("git pull")
+    print("Script updated successfully!")
 # Function to save the setup configuration
 def save_setup(setup_name, setup_data):
     setups = load_setups()
@@ -111,7 +114,10 @@ def check_for(device_id, element):
             
         elif element == "auth_button" and "GO TO AUTH" in xml_content:
             return True
-
+        
+        elif element == "stopped" and ("stop" in xml_content or "android:id/alertTitle" in xml_content):
+            return True
+        
         elif element == "progress_bar" and "android:id/progress" in xml_content:
             return True
 
@@ -124,8 +130,9 @@ def check_for(device_id, element):
         elif element == "settings" and "Settings" in xml_content:
             return True
         
-        elif element == "stopped" and "SafeUM has stopped." in xml_content or "SafeUM keeps stopping." in xml_content:
+        elif element == "safeum" and ("safeum" in xml_content or "SafeUM" in xml_content):
             return True
+        
 
 def initialize_setup():
     parser = argparse.ArgumentParser(description="Automate SafeUM login process.")
@@ -173,6 +180,7 @@ def click_button(button,setup_data,device_id):
     exit_coords = tuple(map(int, setup_data["keep_in_device_button"].split(',')))
     auth_coords = tuple(map(int, setup_data["go_to_auth_button"].split(',')))
     settings_coords = tuple(map(int, setup_data["settings_button"].split(',')))
+    close_coords = tuple(map(int, setup_data["close_app"].split(',')))
 
     if button == "username":
         run_adb_command(f"adb -s {device_id} shell input tap {username_coords[0]} {username_coords[1]}")
@@ -195,6 +203,9 @@ def click_button(button,setup_data,device_id):
     elif button == "exit":
         print("Clicking the exit button...")
         run_adb_command(f"adb -s {device_id} shell input tap {exit_coords[0]} {exit_coords[1]}")
+    elif button == "close_app":
+        print("Clicking the close button...")
+        run_adb_command(f"adb -s {device_id} shell input tap {close_coords[0]} {close_coords[1]}")
     
 def automate_login(username, password, setup_data,device_id,index,total):
     clear_screen()
@@ -286,12 +297,17 @@ def disable_safeum_notifications(device_id):
     command = f"adb -s {device_id} shell appops set com.safeum.android POST_NOTIFICATION deny"
     run_adb_command(command)
     
-def close_and_open(device_id):
+def close_and_open(device_id,setup_data):
     close_safeum(device_id)
     clear_safeum_data(device_id)
     enable_safeum_permissions(device_id)
     disable_safeum_notifications(device_id)
     open_safeum(device_id)
+    if not check_for(device_id,'safeum'):
+        close_and_open(device_id,setup_data)
+    if check_for(device_id,'stopped'):
+        click_button('close_app',setup_data,device_id)
+        open_safeum(device_id)
  
 def retry_check_for(setup_data, device_id):
     found_login = False
@@ -311,9 +327,10 @@ def retry_check_for(setup_data, device_id):
         open_safeum(device_id)  # Retry by  reopening the device
 
 def check_for_error_or_settings(setup_data,device_id):
-    while True:  # Infinite loop until we find either an error or settings
-        found_error = check_for(device_id, 'error')
+    while True:  
         found_settings = check_for(device_id,"settings")
+        found_error = check_for(device_id, 'error')
+        found_stop = check_for(device_id, 'stopped')
         found_login = check_for(device_id, 'login_page')
         if found_settings:
             click_button('settings',setup_data,device_id)
@@ -326,6 +343,10 @@ def check_for_error_or_settings(setup_data,device_id):
         elif found_login:
             print("Login page found again. Restarting the process for this username...")
             return False
+        elif found_stop:
+            print("SafeUM is stopped...")
+            click_button('close_app',setup_data,device_id)
+            return False
 
 def check_for_logout_things(username,device_id,element):
     while True:
@@ -336,7 +357,7 @@ def check_for_logout_things(username,device_id,element):
             xml_content = file.read()
         if element == 'account_control' and "Account control" in xml_content:
             return True
-        elif element == 'logout_button' and username in xml_content:
+        elif element == 'logout_button' and (username in xml_content and "ACCOUNT CONTROL" in xml_content and "You can use up to 3 accounts" in xml_content):
             return True
         elif element == 'exit' and "Account exit" in xml_content:
             return True
@@ -359,9 +380,9 @@ def logout_safeum(username,setup_data,device_id):
     return
 
 def automate_safeum(username, password, setup_data, selected_device,index,total):
-    close_and_open(selected_device)
+    close_and_open(selected_device,setup_data)
     if check_for(selected_device,'stopped'):
-        click_button('logout',setup_data,selected_device)
+        click_button('close_app',setup_data,selected_device)
     retry_check_for(setup_data,selected_device)
     automate_login(username, password, setup_data,selected_device, index,total)
     wait_for_progress_bar_to_disappear(selected_device,setup_data)
@@ -427,7 +448,8 @@ def displaymenu():
     print("3. Setup coordinates.")
     print("4. Display Numbers.")
     print("5. Handle Duplicate Numbers.")
-    print("6. Exit")
+    print("6. Update Script.")
+    print("7. Exit")
 
 def display_phone_numbers():
     # Load the JSON data
@@ -446,7 +468,7 @@ def display_phone_numbers():
     print(','.join(phone_numbers))
 
 def handle_duplicated_numbers(username, password, setup_data, selected_device,index,total):
-    close_and_open(selected_device)
+    close_and_open(selected_device,setup_data)
     retry_check_for(setup_data,selected_device)
     automate_login(username, password, setup_data,selected_device,index,total)
     wait_for_progress_bar_to_disappear(selected_device,setup_data)
@@ -525,6 +547,9 @@ if __name__ == "__main__":
             handle_duplicates("extracted_phone_numbers.json")
             input("\nPress any key to go back to main menu...")
         elif choice == 6:
+            input("\nPress any key to go back to main menu...")  
+            update_script()
+        elif choice == 7:
             exit("Exiting...")
         else:
             print("Invalid input...")
