@@ -304,7 +304,7 @@ def close_and_open(device_id,setup_data):
     open_safeum(device_id)
     if not check_for(device_id,'safeum'):
         close_and_open(device_id,setup_data)
-    if check_for(device_id,'stopped'):
+    elif check_for(device_id,'stopped'):
         click_button('close_app',setup_data,device_id)
         open_safeum(device_id)
  
