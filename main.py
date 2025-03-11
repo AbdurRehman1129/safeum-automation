@@ -3,9 +3,12 @@ import time
 import re
 import json
 import argparse
+import sys
 
 def update_script():
     os.system("git pull")
+    os.execv(sys.executable, ['python'] + sys.argv)  # Restart script
+
 # Function to save the setup configuration
 def save_setup(setup_name, setup_data):
     setups = load_setups()
@@ -34,12 +37,57 @@ def setup_coordinates():
         "settings_button": input("Settings button coordinates (x,y): ").strip(),
         "account_control_button": input("Account control button coordinates (x,y): ").strip(),
         "logout_button": input("Logout button coordinates (x,y): ").strip(),
-        "keep_in_device_button": input("Keep in device button coordinates (x,y): ").strip()
+        "keep_in_device_button": input("Keep in device button coordinates (x,y): ").strip(),
+        "close_app": input("Close app button coordinates (x,y): ").strip()
     }
 
     setup_name = input("Enter a name for this setup: ").strip()
     save_setup(setup_name, setup_data)
 
+def update_coordinates(setup_data):
+    setups = load_setups()
+    if not setups:
+        print("No setups found.")
+        return
+
+    print("Available setups:")
+    for i, name in enumerate(setups.keys(), start=1):
+        print(f"{i}. {name}")
+
+    while True:
+        choice = input("Enter the number of the setup you want to update: ").strip()
+        try:
+            choice = int(choice)
+            if 1 <= choice <= len(setups):
+                setup_name = list(setups.keys())[choice - 1]
+                break
+            else:
+                print("Invalid choice. Please try again.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+
+    setup_data = setups[setup_name]
+    while True:
+        print("\nCurrent coordinates:")
+        for i, (key, value) in enumerate(setup_data.items(), start=1):
+            print(f"{i}. {key}: {value}")
+
+        choice = input("\nEnter the number of the coordinate you want to change (or 'b' to go back to main menu): ").strip()
+        if choice.lower() == 'b':
+            break
+
+        try:
+            choice = int(choice)
+            if 1 <= choice <= len(setup_data):
+                key_to_update = list(setup_data.keys())[choice - 1]
+                new_value = input(f"Enter new coordinates for {key_to_update} (x,y): ").strip()
+                setup_data[key_to_update] = new_value
+                save_setup(setup_name, setup_data)
+                print(f"Updated {key_to_update} to {new_value}")
+            else:
+                print("Invalid choice. Please try again.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
 # Function to load a specific setup
 def load_setup_by_name(setup_name):
     setups = load_setups()
@@ -303,10 +351,9 @@ def close_and_open(device_id,setup_data):
     disable_safeum_notifications(device_id)
     open_safeum(device_id)
     if not check_for(device_id,'safeum'):
+        if check_for(device_id,'stopped'):
+            click_button('close_app',setup_data,device_id)
         close_and_open(device_id,setup_data)
-    elif check_for(device_id,'stopped'):
-        click_button('close_app',setup_data,device_id)
-        open_safeum(device_id)
  
 def retry_check_for(setup_data, device_id):
     found_login = False
@@ -445,10 +492,11 @@ def displaymenu():
     print("1. Extract phone numbers from SafeUM.")
     print("2. Display Extracted accounts.")
     print("3. Setup coordinates.")
-    print("4. Display Numbers.")
-    print("5. Handle Duplicate Numbers.")
-    print("6. Update Script.")
-    print("7. Exit")
+    print("4. Update coordinates.")
+    print("5. Display Numbers.")
+    print("6. Handle Duplicate Numbers.")
+    print("7. Update Script.")
+    print("8. Exit")
 
 def display_phone_numbers():
     # Load the JSON data
@@ -540,15 +588,18 @@ if __name__ == "__main__":
             setup_coordinates()
             input("\nPress any key to go back to main menu...")
         elif choice == 4:
+            setup_data = initialize_setup()
+            update_coordinates(setup_data)
+        elif choice == 5:
             display_phone_numbers()
             input("\nPress any key to go back to main menu...")
-        elif choice == 5:
+        elif choice == 6:
             handle_duplicates("extracted_phone_numbers.json")
             input("\nPress any key to go back to main menu...")
-        elif choice == 6:  
+        elif choice == 7:  
             update_script()
             input("\nPress any key to go back to main menu...")
-        elif choice == 7:
+        elif choice == 8:
             exit("Exiting...")
         else:
             print("Invalid input...")
