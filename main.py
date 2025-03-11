@@ -179,8 +179,7 @@ def check_for(device_id, element):
         
         elif element == "safeum" and ("ENTER YOUR DETAILS" in xml_content):
             return True
-        
-
+    
 def initialize_setup():
     parser = argparse.ArgumentParser(description="Automate SafeUM login process.")
     parser.add_argument("--setup", type=str, help="Specify the setup name to use.")
@@ -197,18 +196,25 @@ def initialize_setup():
         # If no setup is provided or failed to load, check for existing setups
         existing_setups = load_setups()
         if existing_setups:
-            print("No setup provided or failed to load. Available setups:")
-            for setup_name in existing_setups.keys():
-                print(f"- {setup_name}")
-            choice = input("Would you like to select one of these setups? (yes/no): ").strip().lower()
-            if choice == 'yes':
-                selected_setup = input("Enter the name of the setup you want to use: ").strip()
-                setup_data = load_setup_by_name(selected_setup)
-                if setup_data:
-                    print(f"Loaded setup '{selected_setup}' successfully.")
-                else:
-                    print(f"Setup '{selected_setup}' not found. Please create a new one.")
-                    setup_coordinates()
+            print("No setup name provided.")
+            choice = input("Do you want to choose an existing setup or create a new one? (E/C): ").strip().lower()
+            if choice == 'e':
+                print("Available setups:")
+                for i, name in enumerate(existing_setups.keys(), start=1):
+                    print(f"{i}. {name}")
+                while True:
+                    setup_choice = input("Enter the number of the setup you want to use: ").strip()
+                    try:
+                        setup_choice = int(setup_choice)
+                        if 1 <= setup_choice <= len(existing_setups):
+                            setup_name = list(existing_setups.keys())[setup_choice - 1]
+                            setup_data = existing_setups[setup_name]
+                            print(f"Loaded setup '{setup_name}' successfully.")
+                            break
+                        else:
+                            print("Invalid choice. Please try again.")
+                    except ValueError:
+                        print("Invalid input. Please enter a number.")
             else:
                 print("Please create a new setup.")
                 setup_coordinates()
@@ -372,7 +378,7 @@ def retry_check_for(setup_data, device_id):
             break
         open_safeum(device_id)  # Retry by  reopening the device
 
-def check_for_error_or_settings(setup_data,device_id):
+def check_for_error_or_settings(setup_data,device_id,username):
     while True:  
         found_settings = check_for(device_id,"settings")
         found_error = check_for(device_id, 'error')
@@ -380,7 +386,10 @@ def check_for_error_or_settings(setup_data,device_id):
         found_login = check_for(device_id, 'login_page')
         if found_settings:
             click_button('settings',setup_data,device_id)
-            return True
+            if not username:
+                continue
+            else:
+                return True
         
         elif found_error:
             print("Error found. Closing and reopening the app...")
@@ -432,7 +441,7 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
     retry_check_for(setup_data,selected_device)
     automate_login(username, password, setup_data,selected_device, index,total)
     wait_for_progress_bar_to_disappear(selected_device,setup_data)
-    if not check_for_error_or_settings(setup_data,selected_device):
+    if not check_for_error_or_settings(setup_data,selected_device,username):
         # If an error was found, retry the login process
         print("Retrying login process...")
         automate_safeum(username, password, setup_data, selected_device,index,total)
@@ -520,7 +529,7 @@ def handle_duplicated_numbers(username, password, setup_data, selected_device,in
     automate_login(username, password, setup_data,selected_device,index,total)
     wait_for_progress_bar_to_disappear(selected_device,setup_data)
     time.sleep(1)
-    if not check_for_error_or_settings(setup_data,selected_device):
+    if not check_for_error_or_settings(setup_data,selected_device,username):
         # If an error was found, retry the login process
         print("Retrying login process...")
         handle_duplicated_numbers(username, password, setup_data, selected_device,index,total)
