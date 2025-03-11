@@ -531,7 +531,7 @@ def display_accounts(file_path):
             print(f"Number: {number} , Username: {username}")
             index+=1
 
-    print(f"Total numbers are {index}")
+    print(f"Total numbers are {index-1}")
 
 def clear_screen():
     # For Windows
