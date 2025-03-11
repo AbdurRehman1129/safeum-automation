@@ -546,9 +546,9 @@ if __name__ == "__main__":
         elif choice == 5:
             handle_duplicates("extracted_phone_numbers.json")
             input("\nPress any key to go back to main menu...")
-        elif choice == 6:
-            input("\nPress any key to go back to main menu...")  
+        elif choice == 6:  
             update_script()
+            input("\nPress any key to go back to main menu...")
         elif choice == 7:
             exit("Exiting...")
         else:
