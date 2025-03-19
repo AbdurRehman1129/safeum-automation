@@ -528,7 +528,7 @@ def display_accounts(file_path):
         
         for number in numbers:
             number = number.replace(" ", "")  # Normalize the phone number format
-            print(f"Number: {number} , Username: {username}")
+            print(f"{username} {number}")
             index+=1
 
     print(f"Total numbers are {index-1}")
