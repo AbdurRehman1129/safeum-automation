@@ -285,7 +285,11 @@ def automate_login(username, password, setup_data,device_id,index,total):
     click_button('login',setup_data,device_id)
 
 def wait_for_progress_bar_to_disappear(device_id,setup_data):
-    if check_for(device_id, 'progress_bar'):
+    if check_for(device_id,"login_page"):
+        click_button("login",setup_data,device_id)
+        wait_for_progress_bar_to_disappear(device_id,setup_data)
+    
+    elif check_for(device_id, 'progress_bar'):
         print("Waiting for the progress bar to disappear...")
         start_time = time.time()
         while True:
@@ -299,9 +303,6 @@ def wait_for_progress_bar_to_disappear(device_id,setup_data):
                 print("\rTimeout 5 minutes. Starting process again...")
                 click_button('settings',setup_data,device_id)
                 break
-    elif check_for(device_id,"login_page"):
-        click_button("login",setup_data,device_id)
-        wait_for_progress_bar_to_disappear(device_id,setup_data)
         
 def extract_phone_number(device_id):
     print("Extracting phone number...")
