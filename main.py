@@ -9,8 +9,6 @@ def update_script():
     os.system("git pull")
     input("\nPress any key to apply changings now....")
     os.execv(sys.executable, ['python'] + sys.argv)  # Restart script
-
-
 # Function to save the setup configuration
 def save_setup(setup_name, setup_data):
     setups = load_setups()
@@ -298,9 +296,13 @@ def automate_login(username, password, setup_data,device_id,index,total):
     clear_screen()
     print(f"{index}/{total}. Logging in with username: {username}")
     click_button('username',setup_data,device_id)
+    time.sleep(0.5)
     run_adb_command(f"adb -s {device_id} shell input text {username}")
+    time.sleep(0.5)
     click_button('password',setup_data,device_id)
+    time.sleep(0.5)
     run_adb_command(f"adb -s {device_id} shell input text {password}")
+    time.sleep(0.5)
     click_button('login',setup_data,device_id)
 
 # Wait for progress bar to disappear
@@ -396,11 +398,18 @@ def close_and_open(device_id,setup_data):
     enable_safeum_permissions(device_id)
     disable_safeum_notifications(device_id)
     open_safeum(device_id)
-    time.sleep(1)
-    if not check_for(device_id,'safeum'):
+    click_button('username',setup_data,device_id)
+    time.sleep(2)
+    found_login = check_for(device_id, "login_page")
+    if found_login:
+        return 
+    elif not check_for(device_id,'safeum'):
         if check_for(device_id,'stopped'):
             click_button('close_app',setup_data,device_id)
+            click_button('settings',setup_data,device_id)
         close_and_open(device_id,setup_data)
+
+    
  
 def retry_check_for(setup_data, device_id):
     found_login = False
@@ -422,9 +431,6 @@ def retry_check_for(setup_data, device_id):
 def check_for_error_or_settings(setup_data,device_id,username):
     while True:  
         found_settings = check_for(device_id,"settings")
-        found_error = check_for(device_id, 'error')
-        found_stop = check_for(device_id, 'stopped')
-        found_login = check_for(device_id, 'login_page')
         if found_settings:
             click_button('settings',setup_data,device_id)
             if not username:
@@ -432,14 +438,21 @@ def check_for_error_or_settings(setup_data,device_id,username):
             else:
                 return True
         
-        elif found_error:
-            print("Error found. Closing and reopening the app...")
-            return False 
-
-        elif found_login:
+        else:    
+            found_login = check_for(device_id, 'login_page')
+        if found_login:
             print("Login page found again. Restarting the process for this username...")
             return False
-        elif found_stop:
+        
+        else:
+            found_error = check_for(device_id, 'error')
+        if found_error:
+            print("Error found. Closing and reopening the app...")
+            return False 
+        
+        else:   
+            found_stop = check_for(device_id, 'stopped')
+        if found_stop:
             print("SafeUM is stopped...")
             click_button('close_app',setup_data,device_id)
             return False
@@ -477,9 +490,6 @@ def logout_safeum(username,setup_data,device_id):
 
 def automate_safeum(username, password, setup_data, selected_device,index,total):
     close_and_open(selected_device,setup_data)
-    if check_for(selected_device,'stopped'):
-        click_button('close_app',setup_data,selected_device)
-    retry_check_for(setup_data,selected_device)
     automate_login(username, password, setup_data,selected_device, index,total)
     wait_for_progress_bar_to_disappear(selected_device,setup_data)
     if not check_for_error_or_settings(setup_data,selected_device,username):
@@ -571,18 +581,17 @@ def display_phone_numbers():
 
 def handle_duplicated_numbers(username, password, setup_data, selected_device,index,total):
     close_and_open(selected_device,setup_data)
-    retry_check_for(setup_data,selected_device)
-    automate_login(username, password, setup_data,selected_device,index,total)
+    automate_login(username, password, setup_data,selected_device, index,total)
     wait_for_progress_bar_to_disappear(selected_device,setup_data)
-    time.sleep(1)
     if not check_for_error_or_settings(setup_data,selected_device,username):
         # If an error was found, retry the login process
         print("Retrying login process...")
         handle_duplicated_numbers(username, password, setup_data, selected_device,index,total)
         return
-    new_phone_numbers = extract_phone_number(selected_device)
-    if new_phone_numbers:
-        save_phone_number(username, new_phone_numbers)
+    phone_numbers = extract_phone_number(selected_device)
+    if phone_numbers:
+        save_phone_number(username, phone_numbers)
+        
     logout_safeum(username,setup_data,selected_device)
     clear_screen()
     return
