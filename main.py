@@ -33,11 +33,7 @@ def setup_coordinates():
         "username_field": input("Username field coordinates (x,y): ").strip(),
         "password_field": input("Password field coordinates (x,y): ").strip(),
         "login_button": input("Login button coordinates (x,y): ").strip(),
-        "go_to_auth_button": input("GO TO AUTH button coordinates (x,y): ").strip(),
         "settings_button": input("Settings button coordinates (x,y): ").strip(),
-        "account_control_button": input("Account control button coordinates (x,y): ").strip(),
-        "logout_button": input("Logout button coordinates (x,y): ").strip(),
-        "keep_in_device_button": input("Keep in device button coordinates (x,y): ").strip(),
         "close_app": input("Close app button coordinates (x,y): ").strip()
     }
 
@@ -196,7 +192,6 @@ def load_usernames_from_file(file_path):
         print(f"Error: File '{file_path}' not found.")
         exit(1)
 
-
 def initialize_setup():
     parser = argparse.ArgumentParser(description="Automate SafeUM login process.")
     parser.add_argument("--setup", type=str, help="Specify the setup name to use.")
@@ -242,8 +237,8 @@ def initialize_setup():
             setup_coordinates()
     # Verify that all required coordinates are available in setup_data
     required_coordinates = [
-        "username_field", "password_field", "login_button", "go_to_auth_button",
-        "settings_button", "account_control_button", "logout_button", "keep_in_device_button", "close_app"
+        "username_field", "password_field", "login_button",
+        "settings_button", "close_app"
     ]
     
     missing_coordinates = [coord for coord in required_coordinates if coord not in setup_data or not setup_data[coord]]
@@ -260,10 +255,6 @@ def click_button(button,setup_data,device_id):
     username_coords = tuple(map(int, setup_data["username_field"].split(',')))
     password_coords = tuple(map(int, setup_data["password_field"].split(',')))
     login_coords = tuple(map(int, setup_data["login_button"].split(',')))
-    control_coords = tuple(map(int, setup_data["account_control_button"].split(',')))
-    logout_coords = tuple(map(int, setup_data["logout_button"].split(',')))
-    exit_coords = tuple(map(int, setup_data["keep_in_device_button"].split(',')))
-    auth_coords = tuple(map(int, setup_data["go_to_auth_button"].split(',')))
     settings_coords = tuple(map(int, setup_data["settings_button"].split(',')))
     close_coords = tuple(map(int, setup_data["close_app"].split(',')))
 
@@ -273,21 +264,9 @@ def click_button(button,setup_data,device_id):
         run_adb_command(f"adb -s {device_id} shell input tap {password_coords[0]} {password_coords[1]}")
     elif button == "login":
         run_adb_command(f"adb -s {device_id} shell input tap {login_coords[0]} {login_coords[1]}")
-    elif button == "auth":
-        print("Clicking GO TO AUTH button...")
-        run_adb_command(f"adb -s {device_id} shell input tap {auth_coords[0]} {auth_coords[1]}")
     elif button == "settings":
         print("Clicking the settings button...")
         run_adb_command(f"adb -s {device_id} shell input tap {settings_coords[0]} {settings_coords[1]}")
-    elif button == "control":
-        print("Clicking the Account control button...")
-        run_adb_command(f"adb -s {device_id} shell input tap {control_coords[0]} {control_coords[1]}")
-    elif button == "logout":
-        print("Clicking the logout button...")
-        run_adb_command(f"adb -s {device_id} shell input tap {logout_coords[0]} {logout_coords[1]}")
-    elif button == "exit":
-        print("Clicking the exit button...")
-        run_adb_command(f"adb -s {device_id} shell input tap {exit_coords[0]} {exit_coords[1]}")
     elif button == "close_app":
         print("Clicking the close button...")
         run_adb_command(f"adb -s {device_id} shell input tap {close_coords[0]} {close_coords[1]}")
@@ -305,23 +284,25 @@ def automate_login(username, password, setup_data,device_id,index,total):
     time.sleep(0.5)
     click_button('login',setup_data,device_id)
 
-# Wait for progress bar to disappear
 def wait_for_progress_bar_to_disappear(device_id,setup_data):
-    print("Waiting for the progress bar to disappear...")
-    start_time = time.time()
-    while True:
-        found_progress = check_for(device_id, 'progress_bar')
-        if not found_progress:
-            print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
-            print("\rProgress bar disappeared!")
-            break
-        elif time.time() - start_time > 600:  # 10 minutes = 600 seconds
-            print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
-            print("\rTimeout 10 minutes. Starting process again...")
-            click_button('logout',setup_data,device_id)
-            break
+    if check_for(device_id, 'progress_bar'):
+        print("Waiting for the progress bar to disappear...")
+        start_time = time.time()
+        while True:
+            found_progress = check_for(device_id, 'progress_bar')
+            if not found_progress:
+                print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
+                print("\rProgress bar disappeared!")
+                break
+            elif time.time() - start_time > 300:  
+                print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
+                print("\rTimeout 5 minutes. Starting process again...")
+                click_button('settings',setup_data,device_id)
+                break
+    elif check_for(device_id,"login_page"):
+        click_button("login",setup_data,device_id)
+        wait_for_progress_bar_to_disappear(device_id,setup_data)
         
-# Function to extract phone number from the screen XML
 def extract_phone_number(device_id):
     print("Extracting phone number...")
     while True:
@@ -367,12 +348,10 @@ def save_phone_number(username, phone_numbers):
         
     print(f"Phone number for {username} has been saved to 'extracted_phone_numbers.json'.")
 
-# Function to clear all data of the SafeUM app
 def clear_safeum_data(device_id):
     command = f"adb -s {device_id} shell pm clear com.safeum.android"
     run_adb_command(command)
     
-# Function to enable all required permissions for the SafeUM app
 def enable_safeum_permissions(device_id):
     permissions = [
         "android.permission.CAMERA",
@@ -387,7 +366,6 @@ def enable_safeum_permissions(device_id):
         command = f"adb -s {device_id} shell pm grant com.safeum.android {permission}"
         run_adb_command(command)
 
-# Function to disable SafeUM app notifications
 def disable_safeum_notifications(device_id):
     command = f"adb -s {device_id} shell appops set com.safeum.android POST_NOTIFICATION deny"
     run_adb_command(command)
@@ -409,9 +387,6 @@ def close_and_open(device_id,setup_data):
             click_button('settings',setup_data,device_id)
         close_and_open(device_id,setup_data)
 
-    
- 
-def retry_check_for(setup_data, device_id):
     found_login = False
     found_auth = False
     while True:
@@ -443,6 +418,12 @@ def check_for_error_or_settings(setup_data,device_id,username):
         if found_login:
             print("Login page found again. Restarting the process for this username...")
             return False
+        else:   
+            found_stop = check_for(device_id, 'stopped')
+        if found_stop:
+            print("SafeUM is stopped...")
+            click_button('close_app',setup_data,device_id)
+            return False
         
         else:
             found_error = check_for(device_id, 'error')
@@ -450,44 +431,6 @@ def check_for_error_or_settings(setup_data,device_id,username):
             print("Error found. Closing and reopening the app...")
             return False 
         
-        else:   
-            found_stop = check_for(device_id, 'stopped')
-        if found_stop:
-            print("SafeUM is stopped...")
-            click_button('close_app',setup_data,device_id)
-            return False
-
-def check_for_logout_things(username,device_id,element):
-    while True:
-        run_adb_command(f"adb -s {device_id} shell uiautomator dump /sdcard/window_dump.xml")
-        run_adb_command(f"adb -s {device_id} pull /sdcard/window_dump.xml .")
-
-        with open("window_dump.xml", "r", encoding="utf-8") as file:
-            xml_content = file.read()
-        if element == 'account_control' and "Account control" in xml_content:
-            return True
-        elif element == 'logout_button' and (username in xml_content and "ACCOUNT CONTROL" in xml_content and "You can use up to 3 accounts" in xml_content):
-            return True
-        elif element == 'exit' and "Account exit" in xml_content:
-            return True
-
-def logout_safeum(username,setup_data,device_id):
-    while True:
-        if check_for_logout_things(username,device_id,'account_control'):
-            click_button('control',setup_data,device_id)
-            break
-    while True:
-        if check_for_logout_things(username,device_id,'logout_button'):
-            click_button('logout',setup_data,device_id)
-            break
-    while True:   
-        if check_for_logout_things(username,device_id,'exit'):
-            click_button('exit',setup_data,device_id)
-            break
-    while not check_for(device_id, 'login_page'):
-        time.sleep(1)
-    return
-
 def automate_safeum(username, password, setup_data, selected_device,index,total):
     close_and_open(selected_device,setup_data)
     automate_login(username, password, setup_data,selected_device, index,total)
@@ -501,7 +444,6 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
     if phone_numbers:
         save_phone_number(username, phone_numbers)
         
-    logout_safeum(username,setup_data,selected_device)
     clear_screen()
     return
 
@@ -592,7 +534,6 @@ def handle_duplicated_numbers(username, password, setup_data, selected_device,in
     if phone_numbers:
         save_phone_number(username, phone_numbers)
         
-    logout_safeum(username,setup_data,selected_device)
     clear_screen()
     return
     
