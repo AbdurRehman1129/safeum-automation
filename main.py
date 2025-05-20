@@ -33,7 +33,6 @@ def setup_coordinates():
         "login_button": input("Login button coordinates (x,y): ").strip(),
         "settings_button": input("Settings button coordinates (x,y): ").strip(),
         "close_app": input("Close app button coordinates (x,y): ").strip(),
-        "back_button": input("Back button coordinates (x,y): ").strip()
     }
 
     setup_name = input("Enter a name for this setup: ").strip()
@@ -236,7 +235,7 @@ def initialize_setup():
     # Verify that all required coordinates are available in setup_data
     required_coordinates = [
         "username_field", "password_field", "login_button",
-        "settings_button", "close_app", "back_button"
+        "settings_button", "close_app"
     ]
     
     missing_coordinates = [coord for coord in required_coordinates if coord not in setup_data or not setup_data[coord]]
@@ -255,7 +254,6 @@ def click_button(button,setup_data,device_id):
     login_coords = tuple(map(int, setup_data["login_button"].split(',')))
     settings_coords = tuple(map(int, setup_data["settings_button"].split(',')))
     close_coords = tuple(map(int, setup_data["close_app"].split(',')))
-    back_coords = tuple(map(int, setup_data["back_button"].split(',')))
 
     if button == "username":
         run_adb_command(f"adb -s {device_id} shell input tap {username_coords[0]} {username_coords[1]}")
@@ -269,10 +267,7 @@ def click_button(button,setup_data,device_id):
     elif button == "close_app":
         print("Clicking the close button...")
         run_adb_command(f"adb -s {device_id} shell input tap {close_coords[0]} {close_coords[1]}")
-    elif button == "back":
-        print("Clicking the back button...")
-        run_adb_command(f"adb -s {device_id} shell input tap {back_coords[0]} {back_coords[1]}")
-
+    
 def automate_login(username, password, setup_data,device_id,index,total):
     clear_screen()
     print(f"{index}/{total}. Logging in with username: {username}")
@@ -332,7 +327,7 @@ def extract_phone_number(device_id,setup_data):
             if phone_numbers_994:
                 return phone_numbers_994
             else:
-                click_button('back',setup_data,device_id)
+                run_adb_command(f"adb -s {device_id} shell input keyevent 4")  # Back button
                 time.sleep(0.5)
                 click_button('settings',setup_data,device_id)
                 extract_phone_number(device_id,setup_data)
