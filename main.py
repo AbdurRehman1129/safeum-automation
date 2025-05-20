@@ -9,7 +9,7 @@ def update_script():
     os.system("git pull")
     input("\nPress any key to apply changings now....")
     os.execv(sys.executable, ['python'] + sys.argv)  # Restart script
-# Function to save the setup configuration
+
 def save_setup(setup_name, setup_data):
     setups = load_setups()
     setups[setup_name] = setup_data
@@ -17,14 +17,12 @@ def save_setup(setup_name, setup_data):
         json.dump(setups, f, ensure_ascii=False, indent=4)
     print(f"Setup '{setup_name}' saved successfully!")
 
-# Function to load all setups
 def load_setups():
     if os.path.exists("setups.json"):
         with open("setups.json", "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
 
-# Function to setup the coordinates for UI elements
 def setup_coordinates():
     print("Please enter the coordinates for the following UI elements:")
 
@@ -34,7 +32,8 @@ def setup_coordinates():
         "password_field": input("Password field coordinates (x,y): ").strip(),
         "login_button": input("Login button coordinates (x,y): ").strip(),
         "settings_button": input("Settings button coordinates (x,y): ").strip(),
-        "close_app": input("Close app button coordinates (x,y): ").strip()
+        "close_app": input("Close app button coordinates (x,y): ").strip(),
+        "back_button": input("Back button coordinates (x,y): ").strip()
     }
 
     setup_name = input("Enter a name for this setup: ").strip()
@@ -84,7 +83,7 @@ def update_coordinates(setup_data):
                 print("Invalid choice. Please try again.")
         except ValueError:
             print("Invalid input. Please enter a number.")
-# Function to load a specific setup
+
 def load_setup_by_name(setup_name):
     setups = load_setups()
     if setup_name in setups:
@@ -93,7 +92,6 @@ def load_setup_by_name(setup_name):
         print(f"Setup '{setup_name}' not found!")
         return None
 
-# Helper function to run ADB commands and suppress standard output while preserving errors
 def run_adb_command(command):
     return os.system(f"{command} >nul 2>&1")  # Redirect stdout to null, keep stderr
 
@@ -154,10 +152,7 @@ def check_for(device_id, element):
             "com.safeum.android:id/login_button" in xml_content
         ):
             return True  
-            
-        elif element == "auth_button" and "GO TO AUTH" in xml_content:
-            return True
-        
+       
         elif element == "stopped" and ("stop" in xml_content or "android:id/alertTitle" in xml_content):
             return True
         
@@ -174,6 +169,9 @@ def check_for(device_id, element):
             return True
         
         elif element == "safeum" and ("ENTER YOUR DETAILS" in xml_content):
+            return True
+        
+        elif element == "message" and ("Enter your message here" in xml_content and "com.safeum.android:id/editMessages" in xml_content):
             return True
 
 def load_usernames_from_file(file_path):
@@ -238,7 +236,7 @@ def initialize_setup():
     # Verify that all required coordinates are available in setup_data
     required_coordinates = [
         "username_field", "password_field", "login_button",
-        "settings_button", "close_app"
+        "settings_button", "close_app", "back_button"
     ]
     
     missing_coordinates = [coord for coord in required_coordinates if coord not in setup_data or not setup_data[coord]]
@@ -257,6 +255,7 @@ def click_button(button,setup_data,device_id):
     login_coords = tuple(map(int, setup_data["login_button"].split(',')))
     settings_coords = tuple(map(int, setup_data["settings_button"].split(',')))
     close_coords = tuple(map(int, setup_data["close_app"].split(',')))
+    back_coords = tuple(map(int, setup_data["back_button"].split(',')))
 
     if button == "username":
         run_adb_command(f"adb -s {device_id} shell input tap {username_coords[0]} {username_coords[1]}")
@@ -270,41 +269,46 @@ def click_button(button,setup_data,device_id):
     elif button == "close_app":
         print("Clicking the close button...")
         run_adb_command(f"adb -s {device_id} shell input tap {close_coords[0]} {close_coords[1]}")
-    
+    elif button == "back":
+        print("Clicking the back button...")
+        run_adb_command(f"adb -s {device_id} shell input tap {back_coords[0]} {back_coords[1]}")
+
 def automate_login(username, password, setup_data,device_id,index,total):
     clear_screen()
     print(f"{index}/{total}. Logging in with username: {username}")
     click_button('username',setup_data,device_id)
     time.sleep(0.5)
     run_adb_command(f"adb -s {device_id} shell input text {username}")
+    print("Username Entered.")
     time.sleep(0.5)
     click_button('password',setup_data,device_id)
     time.sleep(0.5)
     run_adb_command(f"adb -s {device_id} shell input text {password}")
+    print("Password Entered.")
     time.sleep(0.5)
-    click_button('login',setup_data,device_id)
+    while True:
+        click_button('login',setup_data,device_id)
+        print("Check Button Clicked.")
+        found_progress = check_for(device_id, 'progress_bar')
+        if found_progress:
+            break
 
 def wait_for_progress_bar_to_disappear(device_id,setup_data):
-    if check_for(device_id,"login_page"):
-        click_button("login",setup_data,device_id)
-        wait_for_progress_bar_to_disappear(device_id,setup_data)
-    
-    elif check_for(device_id, 'progress_bar'):
-        print("Waiting for the progress bar to disappear...")
-        start_time = time.time()
-        while True:
-            found_progress = check_for(device_id, 'progress_bar')
-            if not found_progress:
-                print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
-                print("\rProgress bar disappeared!")
-                break
-            elif time.time() - start_time > 300:  
-                print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
-                print("\rTimeout 5 minutes. Starting process again...")
-                click_button('settings',setup_data,device_id)
-                break
+    print("Waiting for the progress bar to disappear...")
+    start_time = time.time()
+    while True:
+        found_progress = check_for(device_id, 'progress_bar')
+        if not found_progress:
+            print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
+            print("\rProgress bar disappeared!")
+            break
+        elif time.time() - start_time > 300:  
+            print("\r" + " " * len("Waiting for the progress bar to disappear..."), end='', flush=True)
+            print("\rTimeout 5 minutes. Starting process again...")
+            click_button('settings',setup_data,device_id)
+            break
         
-def extract_phone_number(device_id):
+def extract_phone_number(device_id,setup_data):
     print("Extracting phone number...")
     while True:
         run_adb_command(f"adb -s {device_id} shell uiautomator dump /sdcard/window_dump.xml")
@@ -322,6 +326,16 @@ def extract_phone_number(device_id):
             phone_numbers = [number.replace(" ", "") for number in phone_numbers]  # Normalize the phone number format
             print(f"Phone number found: {phone_numbers}")
             return phone_numbers
+        elif check_for(device_id, 'message'):
+            phone_number_pattern_994 = r'\b9944\d{8}\b'
+            phone_numbers_994 = re.findall(phone_number_pattern_994, xml_content)
+            if phone_numbers_994:
+                return phone_numbers_994
+            else:
+                click_button('back',setup_data,device_id)
+                time.sleep(0.5)
+                click_button('settings',setup_data,device_id)
+                extract_phone_number(device_id,setup_data)
         
 def load_extracted_data():
     """Load existing data from extracted_phone_numbers.json if it exists."""
@@ -441,7 +455,7 @@ def automate_safeum(username, password, setup_data, selected_device,index,total)
         print("Retrying login process...")
         automate_safeum(username, password, setup_data, selected_device,index,total)
         return
-    phone_numbers = extract_phone_number(selected_device)
+    phone_numbers = extract_phone_number(selected_device,setup_data)
     if phone_numbers:
         save_phone_number(username, phone_numbers)
         
@@ -531,7 +545,7 @@ def handle_duplicated_numbers(username, password, setup_data, selected_device,in
         print("Retrying login process...")
         handle_duplicated_numbers(username, password, setup_data, selected_device,index,total)
         return
-    phone_numbers = extract_phone_number(selected_device)
+    phone_numbers = extract_phone_number(selected_device,setup_data)
     if phone_numbers:
         save_phone_number(username, phone_numbers)
         
